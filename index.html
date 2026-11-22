@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dünya Fatihi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--sea:#cfe0e8;--ink:#1d2a33;--panel:#f6f1e4;--line:#b9a77e;--accent:#9c2f2f;--ok:#2f6b3f;--mute:#6b6552}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sea:#14232c;--ink:#ece6d4;--panel:#2a2619;--line:#6d5f3c;--accent:#d3604f;--ok:#7fc08d;--mute:#a79f86;color-scheme:dark}}
+:root[data-theme="dark"]{--sea:#14232c;--ink:#ece6d4;--panel:#2a2619;--line:#6d5f3c;--accent:#d3604f;--ok:#7fc08d;--mute:#a79f86;color-scheme:dark}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--sea);color:var(--ink);font:14px/1.35 Georgia,"Times New Roman",serif;touch-action:none;user-select:none;-webkit-user-select:none}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bar{position:absolute;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px max(12px,env(safe-area-inset-left,0px)) 8px max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:2px solid var(--line);z-index:5}
+.bar b{font-size:15px;letter-spacing:.04em}
+.bar span{white-space:nowrap}
+#panel{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:2px solid var(--line);padding:10px max(14px,env(safe-area-inset-left,0px)) 12px max(14px,env(safe-area-inset-right,0px));z-index:5}
+#panel h3{margin:0 0 2px;font-size:17px}
+#info{color:var(--mute);margin-bottom:8px;min-height:2.6em}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;min-height:44px;padding:0 14px;border:2px solid var(--line);background:var(--panel);color:var(--ink);border-radius:3px;cursor:pointer}
+button.main{background:var(--accent);color:#fff;border-color:var(--accent)}
+button:disabled{opacity:.4}
+button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+#log{position:absolute;left:12px;right:12px;top:52px;pointer-events:none;z-index:4;display:flex;flex-direction:column;gap:4px}
+#log div{align-self:flex-start;background:var(--panel);border:1px solid var(--line);padding:3px 8px;font-size:12px;opacity:.95}
+#menu{position:absolute;inset:0;background:var(--sea);z-index:10;display:flex;flex-direction:column;align-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) 16px 16px;overflow:auto;touch-action:pan-y}
+#menu[hidden],#dlg[hidden]{display:none}
+#dlg{position:absolute;inset:0;background:#0008;z-index:12;display:flex;align-items:center;justify-content:center;padding:16px}
+.box{background:var(--panel);border:2px solid var(--line);padding:16px;max-width:360px;width:100%}
+.box h3{margin:0 0 6px}.box p{margin:0 0 12px;color:var(--mute)}
+#eras{display:grid;gap:8px;width:100%;max-width:640px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+#eras button{display:flex;flex-direction:column;align-items:flex-start;padding:10px 14px;gap:2px;text-align:left}
+#eras button small{color:var(--mute)}#eras button.on{border-color:var(--accent);background:var(--accent);color:#fff}#eras button.on small{color:#fff}
+#pick{font-size:15px;margin:2px 0 8px;letter-spacing:.04em}#pick[hidden],#list[hidden]{display:none}
+#saves{width:100%;max-width:640px;margin-bottom:12px}
+.srow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px}
+.srow .main{text-align:left;padding:8px 14px;line-height:1.25}
+#savesT{font-size:15px;margin:2px 0 8px;letter-spacing:.04em}#savesT[hidden]{display:none}
+#menu h1{margin:0 0 4px;font-size:34px;letter-spacing:.06em}
+#menu p{max-width:420px;text-align:center;color:var(--mute);margin:4px 0 14px}
+#list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;width:100%;max-width:640px}
+#list button{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:250px;display:flex;flex-direction:column;gap:6px;z-index:4}
+.zoom button{width:44px;padding:0;font-size:20px}
+</style>
+<canvas id="c"></canvas>
+<div class="bar"><b id="who">—</b><span id="yr"></span><span id="gold"></span><span id="army"></span></div>
+<div id="log"></div>
+<div class="zoom"><button id="bSnd" aria-label="Sesi aç veya kapat">♪</button><button id="zi" aria-label="Yakınlaştır">+</button><button id="zo" aria-label="Uzaklaştır">−</button></div>
+<div id="panel"><h3 id="t">Bir bölgeye dokun</h3><div id="info">Haritayı sürükle, iki parmakla yakınlaştır. Bir şehre dokun.</div>
+<div class="row"><button id="bAtk" class="main" disabled>Saldır</button><button id="bCity" disabled>Sonraki şehir</button><button id="bRec">Asker topla (50 altın)</button><button id="bAsk" disabled>Para iste</button><button id="bArmy" disabled>Asker iste</button><button id="bGift" disabled>Hediye ver (50)</button><button id="bAlly" disabled>İttifak teklif et</button><button id="bPeace" disabled>Barış teklif et</button><button id="bEnd">Turu bitir</button><button id="bSave">Kaydet</button><button id="bSaveAs">Yeni kayıt</button><button id="bMenu">Menü</button></div></div>
+<div id="dlg" hidden><div class="box"><h3 id="dt"></h3><p id="dp"></p><div class="row"><button id="dy" class="main"></button><button id="dn"></button></div></div></div>
+<div id="menu"><h1>DÜNYA FATİHİ</h1><p>Önce bir dönem, sonra bir ülke seç. Ordunu topla, komşularını fethet ve haritadaki tüm toprakları ele geçir.</p><h2 id="savesT" hidden>Kayıtlı oyunlar</h2><div id="saves"></div>
+<div id="eras"></div><h2 id="pick" hidden></h2><div id="list" hidden></div></div>
+<script>
+// [name, power, polygon as flat lon,lat list]
+const M1 = [
+["Kanada",6,[-141,69,-125,70,-110,68,-95,72,-80,70,-65,62,-60,55,-56,52,-66,48,-64,45,-67,45,-75,45,-83,46,-95,49,-123,49,-130,55,-141,60]],
+["ABD",10,[-123,49,-95,49,-83,46,-75,45,-67,45,-70,41,-76,35,-81,31,-80,25,-83,29,-90,30,-97,26,-106,31,-117,32,-124,40]],
+["Alaska",2,[-168,66,-141,69,-141,60,-130,55,-150,59,-165,55,-160,60]],
+["Meksika",5,[-117,32,-106,31,-97,26,-97,20,-94,18,-90,21,-87,21,-92,15,-105,19,-110,24,-115,30]],
+["Küba",1,[-85,22,-80,23,-74,20,-78,20]],
+["Grönland",1,[-55,60,-45,60,-20,70,-18,80,-40,83,-65,80,-70,76,-55,70]],
+["Kolombiya",3,[-78,8,-72,12,-67,6,-70,-2,-78,0,-77,4]],
+["Venezuela",3,[-72,12,-62,10,-60,6,-67,2,-67,6]],
+["Brezilya",8,[-60,5,-51,4,-35,-5,-39,-15,-44,-23,-48,-28,-53.2,-33.7,-57.6,-30.2,-58,-20,-70,-10,-70,-2,-67,2]],
+["Peru",3,[-81,-5,-78,0,-70,-2,-70,-10,-69,-18,-71,-18,-76,-14]],
+["Bolivya",2,[-70,-10,-58,-16,-58,-20,-62,-22,-68,-23,-69,-18]],
+["Paraguay",1,[-62,-22,-58,-20,-54,-26,-58,-27,-62,-24]],
+["Şili",3,[-71,-18,-68,-23,-69,-34,-72,-45,-73,-52,-70,-55,-75,-50,-72,-33]],
+["Arjantin",5,[-68,-23,-62,-22,-58,-27,-56,-27.5,-58.4,-34,-62,-39,-65,-45,-69,-52,-68,-55,-72,-48,-70,-35]],
+["İzlanda",1,[-24,64,-18,66,-14,65,-19,63]],
+["Britanya",4,[-5,50,1,51,0,54,-2,58,-6,58,-4,54,-3,52]],
+["İrlanda",1,[-10,52,-6,52,-6,55,-9,54]],
+["Norveç",2,[5,59,8,58,12,60,12,66,20,70,30,70,15,68,5,62]],
+["İsveç",3,[12,56,18,59,17,64,20,69,12,66,12,60]],
+["Finlandiya",2,[22,60,30,61,30,69,22,66,24,62]],
+["Fransa",5,[-4,48,2,51,8,49,7,44,3,43,-2,43,-1,46]],
+["İspanya",4,[-9,43,-2,43,3,42,0,38,-5,36,-9,37]],
+["Portekiz",1,[-9,42,-7,42,-7,37,-9,37]],
+["Almanya",5,[6,50,6,54,14,54,15,51,13,48,8,47]],
+["İtalya",4,[7,44,13,47,13,45,16,41,17,40,15,38,12,42,9,44]],
+["Polonya",3,[14,54,23,54,24,50,19,49,15,51]],
+["Ukrayna",4,[23,51,32,52,40,50,38,47,33,45,29,46,24,48]],
+["Yunanistan",2,[20,40,26,41,25,37,22,36]],
+["Romanya",2,[22,48,29,48,29,44,23,44]],
+["Beyaz Rusya",1,[24,54,32,56,32,52,24,51]],
+["Türkiye",5,[26,41,36,42,42,41,44,38,42,37.1,38,36.8,36.7,36.7,36.2,35.9,36,35.8,28,36,26,38]]
+];
+const M2 = [
+["Rusya",10,[28,60,32,70,60,69,80,73,110,77,140,72,180,69,180,65,160,60,140,55,135,48,120,53,90,50,60,52,48,48,40,50,32,56,28,57]],
+["Kazakistan",3,[50,46,60,52,90,50,80,42,60,42,52,41]],
+["İran",4,[44,38,54,38,61,36,62,30,57,26,50,30,46,33]],
+["Irak",2,[39,34,44,37,48,31,46,29,40,31]],
+["Suriye",1,[36,35.8,36.2,35.9,36.7,36.7,38,36.8,42,37.1,40,32,36,33]],
+["Suudi Arabistan",4,[36,32,46,29,50,26,56,22,52,17,43,13,35,28]],
+["Afganistan",2,[61,36,72,37,71,32,65,29,61,31]],
+["Pakistan",3,[62,30,71,32,75,36,74,30,70,24,66,25]],
+["Hindistan",9,[70,24,75,36,80,35,88,28,97,28,92,22,88,22,80,13,77,8,73,16]],
+["Bangladeş",1,[88,22,92,22,92,26,89,26]],
+["Moğolistan",2,[90,50,120,53,120,47,110,42,95,43]],
+["Çin",10,[75,38,80,42,90,43,110,42,120,47,134,48,125,40,122,30,118,23,108,21,98,24,88,28,80,35]],
+["Tibet",1,[78,34,88,28,98,28,98,34,90,36]],
+["Japonya",4,[130,31,135,34,141,36,142,43,140,41,136,36,131,34]],
+["Tayland",2,[98,20,104,18,103,12,100,8,98,12]],
+["Vietnam",2,[102,22,108,21,109,12,105,9,104,15]],
+["Myanmar",2,[93,26,98,24,100,20,98,12,94,17]],
+["Malezya",1,[100,7,104,2,102,1,100,4]],
+["Endonezya",4,[96,5,106,-6,114,-8,120,-9,106,-3,100,0]],
+["Borneo",1,[109,2,118,7,118,1,114,-3,110,-2]],
+["Filipinler",2,[120,18,125,12,126,7,122,10,120,14]],
+["Yeni Gine",1,[131,-1,141,-3,150,-10,141,-9,135,-4]],
+["Avustralya",6,[114,-22,122,-17,131,-12,137,-12,142,-11,146,-19,153,-26,150,-37,141,-38,130,-32,115,-34]],
+["Yeni Zelanda",1,[172,-35,178,-38,175,-41,172,-44,168,-46,172,-41]],
+["Fas",2,[-13,28,-2,35,-2,30,-8,27,-13,24]],
+["Cezayir",3,[-2,35,9,37,12,30,6,24,-5,25,-2,30]],
+["Libya",2,[10,33,20,33,25,31,25,20,15,23,10,30]],
+["Mısır",3,[25,31,34,31,35,24,25,22]],
+["Sudan",2,[25,22,35,22,38,18,36,14,30,12,24,12,22,15]],
+["Çad",1,[15,23,24,20,22,10,15,8,14,13]],
+["Etiyopya",3,[34,9,38,15,43,12,48,8,42,3,35,5]],
+["Somali",1,[42,3,48,8,51,12,46,-2]],
+["Nijerya",3,[3,12,14,13,12,6,5,5]],
+["Kongo",3,[16,-4,18,2,21,4,27,5,30,4,30,-8.5,24,-11,23.5,-6,16,-5]],
+["Madagaskar",1,[44,-13,50,-15,47,-25,44,-22]]
+];
+const M3 = [
+// Avrupa
+["Belçika",1,[2.5,51,5.5,51.5,6,50,4,49.5,2.5,50]],
+["Hollanda",2,[3.5,51.5,7,53.5,7,51.5,5.5,51.5]],
+["Danimarka",1,[8,55,10,57.5,12.5,56,10.5,54.8,9,54.8]],
+["İsviçre",2,[6,46,10,47.5,10,46,7,45.8]],
+["Avusturya",2,[10,47,13,48.5,17,48,16,46.8,13,46.5]],
+["Çekya",2,[13,50.5,15,51,19,49.5,17,48.5,13,48.8]],
+["Macaristan",1,[16,47.5,22,48.5,22,46,19,45.8,16.5,46.5]],
+["Hırvatistan",1,[13.5,45.5,16.5,46.5,19,45.5,18,44.5,15.5,43.5,14,44.5]],
+["Bosna",1,[16,45,18.5,45.3,19.5,44,19,43,17,43,15.7,44]],
+["Sırbistan",1,[19,45.5,22,46,23,44,22,43,20,42.5,19.5,44]],
+["Arnavutluk",1,[19.4,42.5,20.5,42.2,21,40.5,19.5,40]],
+["Kuzey Makedonya",1,[20.5,42,22.8,42,22.5,41,21,40.8]],
+["Bulgaristan",1,[22.5,44,28.5,44.3,28.5,42,26,41.5,23,42.2]],
+["Moldova",1,[27,48.4,30,48.4,30,46.5,28.2,46.3]],
+["Litvanya",1,[21,56,26,56,26,54,22,54]],
+["Letonya",1,[21,57.5,27.8,57.8,27.8,56.2,21,56.2]],
+["Estonya",1,[23,59,28,59.5,28,57.8,23.5,57.8]],
+// Kafkasya
+["Gürcistan",1,[41,43.5,46,42.5,45,41,42,41.3]],
+["Ermenistan",1,[43.5,41,46.5,41,46,39.5,44,38.8]],
+["Azerbaycan",1,[46,42,49.5,41.5,49,39,46.5,38.8,46,41]],
+// Orta Doğu
+["Lübnan",1,[35.2,34.6,36.5,34.6,36,33.2,35.2,33.1]],
+["İsrail",2,[34.3,33,35.8,33,35.5,31,34.8,29.5,34.2,31.3]],
+["Ürdün",1,[35.5,32.6,38.5,32.5,37,29.5,35,29.4]],
+["Kuveyt",1,[46.5,30,48.5,30,48,28.6,47,28.6]],
+["Katar",1,[50.8,26.2,51.6,26,51.3,24.6,50.8,25]],
+["BAE",1,[51.5,24.5,56.3,26,56,24,52,22.8]],
+["Umman",1,[52,19,56,23,59.8,22.5,58.5,18.5,55,17]],
+["Yemen",1,[43,17,52,18,52.5,16,48,14,43.5,12.8]],
+// Orta Asya
+["Özbekistan",2,[56,45.4,61,44,66,43.5,72,41.2,70,39.5,66,38,60,40.5,56,41.5]],
+["Türkmenistan",1,[52.5,41.2,56,42,60,40.5,66,38,62,35.8,60,36,56,37.3,54,38]],
+["Tacikistan",1,[67,40.5,72,40,75,39.5,75,37,71,37,67.5,37.5]],
+["Kırgızistan",1,[70.5,41.5,76,43,80,42,76,39.8,73,39.5]]
+];
+const M4 = [
+// Asya
+["Nepal",1,[80,28.5,88,27,88,26.4,81,28]],
+["Butan",1,[89,28,92,27.8,92,26.8,89,26.8]],
+["Sri Lanka",1,[79.8,9.5,81.8,7.5,81.5,6,80,6]],
+["Kamboçya",1,[102.5,14.5,107.5,14.2,107.5,11,103,10.5]],
+["Laos",1,[100,20.5,105,18,106.7,15,105,14,101.5,17.5,100.2,18.5]],
+["Tayvan",2,[120,25.3,122,25,121,22,120,23]],
+["Kuzey Kore",1,[124.5,40,129.5,42.8,130.5,42.5,128,38.5,125,38]],
+["Güney Kore",3,[126,38,129,38,129.4,35.5,127,34.5,126,36]],
+// Kuzey Afrika
+["Tunus",1,[8,37.2,11,37,11.5,34,10,33,8.5,34.5]],
+["Moritanya",1,[-17,21,-13,21,-5,25,-5,16.5,-12,15,-16.5,16.5]],
+["Mali",1,[-12,24.5,-5,25,4.5,19.5,4,15,1,14.5,-5,10.5,-11,12,-12,15]],
+["Nijer",1,[4.2,19.5,12,23.4,15,21,15,13.5,10,13,4,13.6,4,15]],
+// Batı Afrika
+["Senegal",1,[-17.5,14.8,-12,14.5,-12,12.5,-16.7,12.5]],
+["Gine",1,[-14.5,12.3,-8,12.3,-8,8.5,-12,7.5,-14,10]],
+["Liberya",1,[-12,8,-8,8,-7.5,4.4,-11,6.5]],
+["Burkina Faso",1,[-5.5,15,0,15,2,12,0.5,10.5,-5.5,10.5]],
+["Fildişi Sahili",1,[-8,10.5,-3,11,-2.5,5,-7.5,4.5,-8.5,7]],
+["Gana",1,[-3,11,1,11,1.2,6,-2.5,5]],
+["Benin",1,[0.8,11.5,3.8,12,3.2,6.3,1.6,6.3,1,8]],
+// Doğu Afrika
+["Güney Sudan",1,[24,10,30,12,35,9.5,34,5,27,4.5,24,7]],
+["Eritre",1,[36.5,18,38.5,18,43,13,41,13,39,15]],
+["Uganda",1,[29.5,4,34,4.2,35,1.5,34,-1,30,-1.2]],
+["Kenya",1,[34,4.5,41.5,4,41,-1.5,39,-4.5,34,-1,35,1.5]],
+["Tanzanya",2,[29.5,-1.5,34,-1,39,-4.5,40,-10.5,34,-11.5,30,-8.5]],
+// Orta Afrika
+["Kamerun",1,[8.5,4.5,15,13,15,8,16.5,2.5,13,2.2,9.5,2.5]],
+["Gabon",1,[9,2,13,2.2,14.5,-2.5,11.5,-5,9,-1]],
+["Kongo Cumhuriyeti",1,[11.5,-5,14.5,-2.5,16.5,2.5,18,2,16,-4]],
+["Orta Afrika",1,[15,8,22,10,27,5,21,4,16.5,2.5]],
+// Güney Afrika
+["Angola",2,[12,-5,16,-5,23.5,-6,24,-11,22,-13,21,-17.5,12,-17.3]],
+["Zambiya",1,[22,-13,24,-11,30,-8.5,33,-9.5,33,-14,30,-15,26,-18,22,-17.5]],
+["Malavi",1,[33,-9.5,35.5,-12,35,-15.5,33,-14]],
+["Zimbabve",1,[26,-18,30,-15,33,-17,32,-21,29,-22.3,26,-20]],
+["Namibya",1,[12,-17.3,21,-17.5,24,-18.5,20,-22,20,-28.5,16.5,-28.5,14,-23]],
+["Botsvana",1,[20,-22,26,-20,26.5,-24,22,-26.5,20,-26]],
+["Güney Afrika",3,[16.5,-28.5,20,-28.5,20,-26,22,-26.5,26.5,-24,29,-22.3,32,-22.5,32.5,-26.5,30,-31,27,-33.5,22,-34.5,18,-34,17,-30]],
+["Mozambik",1,[32.5,-10.5,40.5,-10.5,40,-16,35,-24.2,32.8,-26.5,32,-22.5,33,-17,35,-15.5,35.5,-12,34,-11.5]]
+];
+const M5 = [
+["Guatemala",1,[-92,17.8,-89,17.8,-88.3,15.7,-90,13.8,-92,14.5]],
+["Honduras",1,[-89,15.8,-83.5,15.2,-83.5,14,-87,12.9,-89,13.5]],
+["Nikaragua",1,[-87.5,13,-83.4,15,-83.7,11,-85.8,11]],
+["Kosta Rika",1,[-85.8,11,-83.7,10.9,-82.7,9.5,-83,8.2,-85.5,9.8]],
+["Panama",1,[-83,9.5,-79,9.6,-77.3,8.5,-77.8,7.2,-80,7.3,-82.8,8.2]],
+["Guyana",1,[-61,8.4,-57,6.5,-58,2.5,-60,2.2,-61,5]],
+["Surinam",1,[-57,6,-54,5.8,-54,2.2,-56.5,2]],
+["Uruguay",1,[-58.3,-30.2,-53.3,-33.7,-54.8,-34.9,-58,-34]],
+["Ekvador",1,[-80,-3.2,-78,1.2,-75.3,-0.1,-76,-3.5,-79.3,-4.8]],
+["Haiti",1,[-74.5,19.8,-72,19.9,-71.7,18.2,-74.3,18.4]],
+["Dominik Cumhuriyeti",1,[-71.7,19.8,-69,19.2,-68.5,18.4,-71.7,18]]
+];
+const SCN=[
+{id:'ww1',name:'1. Dünya Savaşı',year:1914,war:true,sub:'İtilaf ve İttifak karşı karşıya',
+ pow:{Britanya:7,Almanya:9,Rusya:8,Fransa:6,ABD:6,Çin:2,Hindistan:3,Japonya:4,Türkiye:3},
+ rule:{Britanya:['Hindistan','Bangladeş','Mısır','Sudan','Kanada','Avustralya','Yeni Zelanda','Güney Afrika','Nijerya','Kenya','Uganda','Tanzanya','Zambiya','Zimbabve','Malavi','Botsvana','Malezya','Myanmar','Gana','Liberya'],
+  Fransa:['Cezayir','Fas','Mali','Nijer','Moritanya','Senegal','Gine','Fildişi Sahili','Burkina Faso','Benin','Tunus','Gabon','Kongo Cumhuriyeti','Orta Afrika','Kamboçya','Laos','Çad','Madagaskar','Vietnam'],
+  Rusya:['Ukrayna','Beyaz Rusya','Litvanya','Letonya','Estonya','Polonya','Gürcistan','Ermenistan','Azerbaycan','Özbekistan','Türkmenistan','Tacikistan','Kırgızistan','Kazakistan','Finlandiya'],
+  Türkiye:['Suriye','Irak','Suudi Arabistan','Yemen','Umman','Lübnan','İsrail','Ürdün'],Portekiz:['Angola','Mozambik'],Avusturya:['Macaristan','Çekya','Hırvatistan','Bosna'],
+  İtalya:['Libya','Somali'],Japonya:['Kuzey Kore','Güney Kore','Tayvan'],ABD:['Alaska','Küba','Filipinler']},
+ blocs:[['Britanya','Fransa','Rusya','Japonya','İtalya'],['Almanya','Türkiye','Avusturya','Bulgaristan']]},
+{id:'ww2',name:'2. Dünya Savaşı',year:1939,war:true,sub:'Müttefikler ve Eksen devletleri',
+ pow:{ABD:10,Almanya:9,Rusya:9,Britanya:6,Japonya:7,Fransa:5,İtalya:5,Çin:4,Hindistan:3},
+ rule:{Britanya:['Hindistan','Bangladeş','Mısır','Sudan','Kanada','Avustralya','Yeni Zelanda','Güney Afrika','Nijerya','Kenya','Uganda','Tanzanya','Zambiya','Zimbabve','Malavi','Botsvana','Malezya','Myanmar','Gana','Liberya','Irak'],
+  Fransa:['Cezayir','Fas','Mali','Nijer','Moritanya','Senegal','Gine','Fildişi Sahili','Burkina Faso','Benin','Tunus','Gabon','Kongo Cumhuriyeti','Orta Afrika','Kamboçya','Laos','Çad','Madagaskar','Vietnam','Suriye'],
+  Rusya:['Ukrayna','Beyaz Rusya','Litvanya','Letonya','Estonya','Gürcistan','Ermenistan','Azerbaycan','Özbekistan','Türkmenistan','Tacikistan','Kırgızistan','Kazakistan','Moğolistan'],
+  İtalya:['Libya','Somali','Etiyopya','Arnavutluk'],Japonya:['Kuzey Kore','Güney Kore','Tayvan'],ABD:['Alaska','Küba','Filipinler'],Portekiz:['Angola','Mozambik']},
+ blocs:[['Britanya','Fransa','Polonya','ABD','Çin','Yunanistan'],['Almanya','İtalya','Japonya','Romanya','Macaristan','Bulgaristan']]},
+{id:'now',name:'2026',year:2026,sub:'Günümüzün dünyası, NATO ve rakipleri',
+ pow:{ABD:10,Çin:10,Hindistan:8,Rusya:7,Brezilya:6,Japonya:5,Almanya:5,Britanya:4,Fransa:5,Türkiye:5},rule:{},
+ blocs:[['ABD','Kanada','Britanya','Fransa','Almanya','İtalya','İspanya','Portekiz','Polonya','Türkiye','Norveç','İsveç','Finlandiya','Litvanya','Letonya','Estonya','Yunanistan','Romanya','Hırvatistan','Bulgaristan','Arnavutluk','Çekya','Macaristan','Belçika','Hollanda','Danimarka','Güney Kore','Japonya','Avustralya'],['Rusya','Çin','İran','Beyaz Rusya','Kuzey Kore']]}
+];
+let scn=SCN[2];
+const tid=n=>T.findIndex(t=>t.name===n);
+function applyScn(s){
+  scn=s;rel={};
+  T.forEach(t=>{if(t.pow0==null)t.pow0=t.pow;t.pow=s.pow[t.name]??t.pow0;t.owner=t.id});
+  for(const [r,list] of Object.entries(s.rule))for(const n of list){const i=tid(n);if(i>=0)T[i].owner=tid(r)}
+  const b=s.blocs.map(g=>g.map(tid).filter(i=>i>=0));
+  b.forEach(g=>g.forEach(x=>g.forEach(y=>{if(x!==y)setR(x,y,35)})));
+  b[0].forEach(x=>b[1].forEach(y=>setR(x,y,-35)));
+  war={};ally={};
+  b.forEach(g=>g.forEach(x=>g.forEach(y=>{if(x!==y)ally[rk(x,y)]=1})));
+  if(s.war)b[0].forEach(x=>b[1].forEach(y=>{war[rk(x,y)]=1;delete ally[rk(x,y)]}));
+  C.forEach(c=>c.owner=T[c.t].owner);
+}
+const CITY_DATA={
+"Kanada":"Ottawa,Toronto,Vancouver,Montreal","ABD":"Washington,New York,Los Angeles,Chicago,Houston","Alaska":"Juneau,Anchorage","Meksika":"Mexico City,Guadalajara,Monterrey",
+"Orta Amerika":"Guatemala City,Panama City,San José","Küba":"Havana,Santiago","Grönland":"Nuuk,Ilulissat","Kolombiya":"Bogotá,Medellín,Cali","Venezuela":"Caracas,Maracaibo",
+"Guyanalar":"Georgetown,Paramaribo","Brezilya":"Brasília,São Paulo,Rio de Janeiro,Manaus","Peru":"Lima,Cusco,Iquitos","Bolivya":"La Paz,Santa Cruz","Paraguay":"Asunción,Ciudad del Este",
+"Şili":"Santiago,Antofagasta,Punta Arenas","Arjantin":"Buenos Aires,Córdoba,Ushuaia","İzlanda":"Reykjavik,Akureyri","Britanya":"Londra,Manchester,Edinburgh","İrlanda":"Dublin,Cork",
+"Norveç":"Oslo,Bergen,Tromsø","İsveç":"Stockholm,Göteborg,Kiruna","Finlandiya":"Helsinki,Oulu","Fransa":"Paris,Marsilya,Lyon","İspanya":"Madrid,Barselona,Sevilla","Portekiz":"Lizbon,Porto",
+"Almanya":"Berlin,Münih,Hamburg","İtalya":"Roma,Milano,Napoli","Polonya":"Varşova,Krakov,Gdansk","Ukrayna":"Kiev,Harkov,Odessa","Balkanlar":"Belgrad,Viyana,Zagreb",
+"Yunanistan":"Atina,Selanik","Romanya":"Bükreş,Köstence","Beyaz Rusya":"Minsk,Gomel","Baltık":"Riga,Vilnius,Tallinn","Türkiye":"Ankara,İstanbul,İzmir,Erzurum",
+"Rusya":"Moskova,St. Petersburg,Novosibirsk,Vladivostok,Yakutsk","Kazakistan":"Astana,Almatı,Aktobe","Orta Asya":"Taşkent,Aşkabat,Duşanbe","Kafkasya":"Tiflis,Bakü,Erivan",
+"İran":"Tahran,İsfahan,Şiraz","Irak":"Bağdat,Basra,Musul","Suriye":"Şam,Halep","Suudi Arabistan":"Riyad,Cidde,Mekke","Yemen/Umman":"Sana,Maskat",
+"Afganistan":"Kabil,Kandahar","Pakistan":"İslamabad,Karaçi,Lahor","Hindistan":"Yeni Delhi,Mumbai,Kalküta,Bangalore","Bangladeş":"Dakka,Chittagong",
+"Moğolistan":"Ulan Batur,Darhan","Çin":"Pekin,Şanghay,Guangzhou,Chongqing,Urumçi","Tibet":"Lhasa,Shigatse","Kore":"Seul,Pusan","Japonya":"Tokyo,Osaka,Sapporo",
+"Tayland":"Bangkok,Chiang Mai","Vietnam":"Hanoi,Ho Chi Minh","Myanmar":"Naypyidaw,Yangon","Malezya":"Kuala Lumpur,Singapur","Endonezya":"Cakarta,Surabaya,Medan",
+"Borneo":"Bandar Seri Begawan,Kuching","Filipinler":"Manila,Cebu","Yeni Gine":"Port Moresby,Jayapura","Avustralya":"Canberra,Sidney,Perth,Darwin","Yeni Zelanda":"Wellington,Auckland",
+"Fas":"Rabat,Kazablanka","Cezayir":"Cezayir,Wahran,Tamanrasset","Libya":"Trablus,Bingazi","Mısır":"Kahire,İskenderiye,Asvan","Sudan":"Hartum,Port Sudan",
+"Mali/Nijer":"Bamako,Niamey,Timbuktu","Çad":"Encamina,Abeşe","Etiyopya":"Addis Ababa,Dire Dawa","Somali":"Mogadişu,Hargeisa","Batı Afrika":"Dakar,Abidjan,Accra",
+"Nijerya":"Abuja,Lagos,Kano","Kongo":"Kinşasa,Kisangani,Lubumbashi","Kenya/Tanzanya":"Nairobi,Dar es Salaam","Angola/Zambiya":"Luanda,Lusaka",
+"Güney Afrika":"Pretoria,Cape Town,Johannesburg","Mozambik":"Maputo,Beira","Madagaskar":"Antananarivo,Toamasina"
+};
+Object.assign(CITY_DATA,{
+"Belçika":"Brüksel,Anvers","Hollanda":"Amsterdam,Rotterdam","Danimarka":"Kopenhag,Aarhus","İsviçre":"Bern,Zürih","Avusturya":"Viyana,Salzburg","Çekya":"Prag,Brno,Bratislava",
+"Macaristan":"Budapeşte,Debrecen","Hırvatistan":"Zagreb,Split,Ljubljana","Bosna":"Saraybosna,Banja Luka","Sırbistan":"Belgrad,Niş","Arnavutluk":"Tiran,Draç","Kuzey Makedonya":"Üsküp,Manastır",
+"Bulgaristan":"Sofya,Varna","Moldova":"Kişinev,Tiraspol","Litvanya":"Vilnius,Kaunas","Letonya":"Riga,Daugavpils","Estonya":"Tallinn,Tartu","Gürcistan":"Tiflis,Batum","Ermenistan":"Erivan,Gümrü",
+"Azerbaycan":"Bakü,Gence","Lübnan":"Beyrut,Trablusşam","İsrail":"Kudüs,Tel Aviv","Ürdün":"Amman,Akabe","Kuveyt":"Kuveyt,Cehra","Katar":"Doha,Vakra","BAE":"Abu Dabi,Dubai","Umman":"Maskat,Salala",
+"Yemen":"Sana,Aden","Özbekistan":"Taşkent,Semerkant,Hive","Türkmenistan":"Aşkabat,Merv","Tacikistan":"Duşanbe,Hocend","Kırgızistan":"Bişkek,Oş","Nepal":"Katmandu,Pokhara","Butan":"Thimphu,Paro",
+"Sri Lanka":"Kolombo,Kandy","Kamboçya":"Phnom Penh,Siem Reap","Laos":"Vientiane,Luang Prabang","Tayvan":"Taipei,Kaohsiung","Kuzey Kore":"Pyongyang,Hamhung","Güney Kore":"Seul,Pusan,Daegu",
+"Tunus":"Tunus,Sfax","Moritanya":"Nouakchott,Nouadhibou","Mali":"Bamako,Timbuktu,Gao","Nijer":"Niamey,Agadez","Senegal":"Dakar,Saint-Louis","Gine":"Konakri,Kankan","Liberya":"Monrovia,Buchanan",
+"Burkina Faso":"Wagadugu,Bobo-Dioulasso","Fildişi Sahili":"Yamoussoukro,Abidjan","Gana":"Akra,Kumasi","Benin":"Porto-Novo,Cotonou","Güney Sudan":"Cuba,Wau","Eritre":"Asmara,Massawa",
+"Uganda":"Kampala,Gulu","Kenya":"Nairobi,Mombasa","Tanzanya":"Dodoma,Dar es Salaam","Kamerun":"Yaounde,Douala","Gabon":"Libreville,Franceville","Kongo Cumhuriyeti":"Brazzaville,Pointe-Noire",
+"Orta Afrika":"Bangui,Bambari","Angola":"Luanda,Huambo","Zambiya":"Lusaka,Ndola","Malavi":"Lilongwe,Blantyre","Zimbabve":"Harare,Bulawayo","Namibya":"Windhoek,Walvis Bay","Botsvana":"Gaborone,Maun",
+"Guatemala":"Guatemala City,Quetzaltenango","Honduras":"Tegucigalpa,San Pedro Sula","Nikaragua":"Managua,León","Kosta Rika":"San José,Limón","Panama":"Panama City,Colón","Guyana":"Georgetown,Linden",
+"Surinam":"Paramaribo,Nieuw Nickerie","Uruguay":"Montevideo,Salto","Ekvador":"Quito,Guayaquil","Haiti":"Port-au-Prince,Cap-Haïtien","Dominik Cumhuriyeti":"Santo Domingo,Santiago"});
+// "Ülke": "Ad:boylam,enlem;..."  (ilk şehir başkent)
+const CITIES={
+"Kanada":"Ottawa:-75.7,45.4;Toronto:-79.4,43.7;Montreal:-73.6,45.5;Vancouver:-123.1,49.3;Calgary:-114.1,51.0;Edmonton:-113.5,53.5;Winnipeg:-97.1,49.9;Quebec:-71.2,46.8;Halifax:-63.6,44.6;Saskatoon:-106.7,52.1;Whitehorse:-135.1,60.7;Yellowknife:-114.4,62.5;Iqaluit:-68.5,63.7;Thunder Bay:-89.2,48.4;Saint Johns:-52.7,47.6",
+"ABD":"Washington:-77.0,38.9;New York:-74.0,40.7;Los Angeles:-118.2,34.1;Chicago:-87.6,41.9;Houston:-95.4,29.8;Phoenix:-112.1,33.4;Philadelphia:-75.2,40.0;San Francisco:-122.4,37.8;Seattle:-122.3,47.6;Denver:-105.0,39.7;Dallas:-96.8,32.8;Atlanta:-84.4,33.7;Miami:-80.2,25.8;Boston:-71.1,42.4;Detroit:-83.0,42.3;Minneapolis:-93.3,45.0;St. Louis:-90.2,38.6;Kansas City:-94.6,39.1;New Orleans:-90.1,30.0;Las Vegas:-115.1,36.2;Salt Lake City:-111.9,40.8;Portland:-122.7,45.5;Nashville:-86.8,36.2;Omaha:-96.0,41.3;Albuquerque:-106.7,35.1;Charlotte:-80.8,35.2;Boise:-116.2,43.6",
+"Alaska":"Juneau:-134.4,58.3;Anchorage:-149.9,61.2;Fairbanks:-147.7,64.8;Nome:-165.4,64.5",
+"Meksika":"Mexico City:-99.1,19.4;Guadalajara:-103.3,20.7;Monterrey:-100.3,25.7;Tijuana:-117.0,32.5;Merida:-89.6,21.0;Puebla:-98.2,19.0;Chihuahua:-106.1,28.6;Veracruz:-96.1,19.2;Oaxaca:-96.7,17.1;Hermosillo:-111.0,29.1;La Paz:-110.3,24.1",
+"Küba":"Havana:-82.4,23.1;Santiago de Cuba:-75.8,20.0;Camaguey:-77.9,21.4",
+"Grönland":"Nuuk:-51.7,64.2;Ilulissat:-51.1,69.2;Tasiilaq:-37.6,65.6;Qaanaaq:-69.2,77.5",
+"Kolombiya":"Bogota:-74.1,4.7;Medellin:-75.6,6.2;Cali:-76.5,3.4;Barranquilla:-74.8,11.0;Cartagena:-75.5,10.4;Bucaramanga:-73.1,7.1;Leticia:-69.9,-4.2",
+"Venezuela":"Karakas:-66.9,10.5;Maracaibo:-71.6,10.6;Valencia:-68.0,10.2;Ciudad Guayana:-62.6,8.4;Merida:-71.1,8.6",
+"Brezilya":"Brasilia:-47.9,-15.8;Sao Paulo:-46.6,-23.5;Rio de Janeiro:-43.2,-22.9;Salvador:-38.5,-13.0;Fortaleza:-38.5,-3.7;Belo Horizonte:-43.9,-19.9;Manaus:-60.0,-3.1;Curitiba:-49.3,-25.4;Recife:-34.9,-8.1;Porto Alegre:-51.2,-30.0;Belem:-48.5,-1.5;Goiania:-49.3,-16.7;Campo Grande:-54.6,-20.5;Cuiaba:-56.1,-15.6;Porto Velho:-63.9,-8.8;Rio Branco:-67.8,-10.0",
+"Peru":"Lima:-77.0,-12.0;Cusco:-72.0,-13.5;Arequipa:-71.5,-16.4;Iquitos:-73.2,-3.7;Trujillo:-79.0,-8.1;Piura:-80.6,-5.2",
+"Bolivya":"La Paz:-68.1,-16.5;Santa Cruz:-63.2,-17.8;Cochabamba:-66.2,-17.4;Sucre:-65.3,-19.0;Trinidad:-64.9,-14.8",
+"Paraguay":"Asuncion:-57.6,-25.3;Ciudad del Este:-54.6,-25.5;Concepcion:-57.4,-23.4",
+"Şili":"Santiago:-70.7,-33.4;Valparaiso:-71.6,-33.0;Concepcion:-73.0,-36.8;Antofagasta:-70.4,-23.6;Punta Arenas:-70.9,-53.2;Temuco:-72.6,-38.7;Arica:-70.3,-18.5",
+"Arjantin":"Buenos Aires:-58.4,-34.6;Cordoba:-64.2,-31.4;Rosario:-60.7,-32.9;Mendoza:-68.8,-32.9;Tucuman:-65.2,-26.8;Salta:-65.4,-24.8;Neuquen:-68.1,-38.9;Bariloche:-71.3,-41.1;Comodoro Rivadavia:-67.5,-45.9;Ushuaia:-68.3,-54.8",
+"Guatemala":"Guatemala City:-90.5,14.6;Quetzaltenango:-91.5,14.8;Peten:-89.9,16.9",
+"Honduras":"Tegucigalpa:-87.2,14.1;San Pedro Sula:-88.0,15.5",
+"Nikaragua":"Managua:-86.3,12.1;Leon:-86.9,12.4;Bluefields:-83.8,12.0",
+"Kosta Rika":"San Jose:-84.1,9.9;Limon:-83.0,10.0",
+"Panama":"Panama City:-79.5,9.0;Colon:-79.9,9.4;David:-82.4,8.4",
+"Guyana":"Georgetown:-58.2,6.8;Lethem:-59.8,3.4",
+"Surinam":"Paramaribo:-55.2,5.9;Albina:-54.1,5.5",
+"Uruguay":"Montevideo:-56.2,-34.9;Salto:-58.0,-31.4",
+"Ekvador":"Quito:-78.5,-0.2;Guayaquil:-79.9,-2.2;Cuenca:-79.0,-2.9",
+"Haiti":"Port-au-Prince:-72.3,18.5;Cap-Haitien:-72.2,19.8",
+"Dominik Cumhuriyeti":"Santo Domingo:-69.9,18.5;Santiago:-70.7,19.5",
+"İzlanda":"Reykjavik:-21.9,64.1;Akureyri:-18.1,65.7;Egilsstadir:-14.4,65.3",
+"Britanya":"Londra:-0.1,51.5;Manchester:-2.2,53.5;Edinburgh:-3.2,55.95;Birmingham:-1.9,52.5;Glasgow:-4.3,55.9;Bristol:-2.6,51.5;Newcastle:-1.6,54.97;Cardiff:-3.2,51.5;Inverness:-4.2,57.5;Leeds:-1.5,53.8",
+"İrlanda":"Dublin:-6.3,53.3;Cork:-8.5,51.9;Galway:-9.05,53.3;Derry:-7.3,55.0",
+"Norveç":"Oslo:10.75,59.9;Bergen:5.3,60.4;Trondheim:10.4,63.4;Tromso:18.96,69.65;Stavanger:5.7,59.0;Bodo:14.4,67.3;Kirkenes:30.0,69.7",
+"İsveç":"Stockholm:18.1,59.3;Goteborg:12.0,57.7;Malmo:13.0,55.6;Uppsala:17.6,59.9;Umea:20.3,63.8;Kiruna:20.2,67.85;Sundsvall:17.3,62.4",
+"Finlandiya":"Helsinki:24.9,60.2;Tampere:23.8,61.5;Oulu:25.5,65.0;Rovaniemi:25.7,66.5;Kuopio:27.7,62.9;Turku:22.3,60.45",
+"Fransa":"Paris:2.35,48.9;Marsilya:5.4,43.3;Lyon:4.85,45.75;Toulouse:1.4,43.6;Nice:7.3,43.7;Nantes:-1.55,47.2;Strazburg:7.75,48.6;Bordeaux:-0.6,44.8;Lille:3.06,50.6;Brest:-4.5,48.4;Montpellier:3.9,43.6",
+"İspanya":"Madrid:-3.7,40.4;Barselona:2.2,41.4;Valensiya:-0.4,39.5;Sevilla:-6.0,37.4;Zaragoza:-0.9,41.65;Bilbao:-2.9,43.3;Malaga:-4.4,36.7;Santiago de Compostela:-8.5,42.9;Murcia:-1.1,38.0;Valladolid:-4.7,41.65",
+"Portekiz":"Lizbon:-9.1,38.7;Porto:-8.6,41.15;Faro:-8.0,37.0;Coimbra:-8.4,40.2",
+"Almanya":"Berlin:13.4,52.5;Hamburg:10.0,53.55;Münih:11.6,48.1;Köln:6.95,50.9;Frankfurt:8.7,50.1;Stuttgart:9.2,48.8;Dresden:13.7,51.05;Hannover:9.7,52.4;Bremen:8.8,53.1;Nürnberg:11.1,49.45;Rostock:12.1,54.1;Saarbrücken:7.0,49.2",
+"İtalya":"Roma:12.5,41.9;Milano:9.2,45.5;Napoli:14.3,40.85;Torino:7.7,45.1;Palermo:13.4,38.1;Cenova:8.9,44.4;Bolonya:11.3,44.5;Floransa:11.25,43.8;Bari:16.9,41.1;Venedik:12.3,45.4;Cagliari:9.1,39.2;Trieste:13.8,45.65",
+"Polonya":"Varşova:21.0,52.2;Krakow:19.9,50.05;Lodz:19.5,51.75;Wroclaw:17.0,51.1;Poznan:16.9,52.4;Gdansk:18.65,54.35;Szczecin:14.55,53.4;Lublin:22.6,51.25;Bialystok:23.2,53.1;Katowice:19.0,50.3",
+"Ukrayna":"Kiev:30.5,50.45;Harkov:36.2,50.0;Odessa:30.7,46.5;Dnipro:35.0,48.45;Lviv:24.0,49.85;Zaporijya:35.1,47.85;Donetsk:37.8,48.0;Herson:32.6,46.6;Poltava:34.55,49.6;Çernigov:31.3,51.5;Simferopol:34.1,44.95",
+"Beyaz Rusya":"Minsk:27.55,53.9;Gomel:31.0,52.4;Brest:23.7,52.1;Grodno:23.8,53.7;Vitebsk:30.2,55.2;Mogilev:30.3,53.9",
+"Romanya":"Bükreş:26.1,44.4;Cluj:23.6,46.8;Iasi:27.6,47.15;Timisoara:21.2,45.75;Köstence:28.65,44.2;Brasov:25.6,45.65",
+"Yunanistan":"Atina:23.7,38.0;Selanik:22.95,40.6;Patras:21.7,38.25;Iraklion:25.1,35.3;Larissa:22.4,39.65;Yanya:20.85,39.65",
+"Belçika":"Brüksel:4.35,50.85;Anvers:4.4,51.2;Liege:5.57,50.63;Gent:3.72,51.05",
+"Hollanda":"Amsterdam:4.9,52.4;Rotterdam:4.5,51.9;Eindhoven:5.5,51.45;Groningen:6.6,53.2",
+"Danimarka":"Kopenhag:12.55,55.7;Aarhus:10.2,56.15;Aalborg:9.9,57.05;Odense:10.4,55.4",
+"İsviçre":"Bern:7.45,46.95;Zürih:8.55,47.4;Cenevre:6.15,46.2;Lugano:8.95,46.0",
+"Avusturya":"Viyana:16.4,48.2;Salzburg:13.05,47.8;Innsbruck:11.4,47.25;Graz:15.45,47.07;Linz:14.3,48.3",
+"Çekya":"Prag:14.4,50.1;Brno:16.6,49.2;Ostrava:18.3,49.8;Bratislava:17.1,48.15;Kosice:21.25,48.7;Plzen:13.4,49.75",
+"Macaristan":"Budapeşte:19.05,47.5;Debrecen:21.6,47.5;Szeged:20.15,46.25;Pecs:18.2,46.07;Gyor:17.65,47.7",
+"Hırvatistan":"Zagreb:16.0,45.8;Split:16.45,43.5;Rijeka:14.45,45.3;Osijek:18.7,45.55;Ljubljana:14.5,46.05;Dubrovnik:18.1,42.65",
+"Bosna":"Saraybosna:18.4,43.85;Banja Luka:17.2,44.8;Mostar:17.8,43.35;Tuzla:18.7,44.55",
+"Sırbistan":"Belgrad:20.45,44.8;Novi Sad:19.85,45.25;Niş:21.9,43.3;Kragujevac:20.9,44.0;Priştine:21.17,42.67",
+"Arnavutluk":"Tiran:19.8,41.3;Shkoder:19.5,42.07;Vlore:19.5,40.45;Korce:20.8,40.6",
+"Kuzey Makedonya":"Üsküp:21.45,42.0;Manastır:21.35,41.03;Ohri:20.8,41.1",
+"Bulgaristan":"Sofya:23.3,42.7;Filibe:24.75,42.15;Varna:27.9,43.2;Burgaz:27.45,42.5;Rusçuk:25.95,43.85",
+"Moldova":"Kişinev:28.85,47.0;Balti:27.9,47.75;Tiraspol:29.6,46.85",
+"Litvanya":"Vilnius:25.3,54.7;Kaunas:23.9,54.9;Klaipeda:21.1,55.7;Siauliai:23.3,55.9",
+"Letonya":"Riga:24.1,56.95;Daugavpils:26.5,55.9;Liepaja:21.0,56.5",
+"Estonya":"Tallinn:24.75,59.45;Tartu:26.7,58.4;Narva:28.2,59.4;Parnu:24.5,58.4"
+};
+Object.assign(CITIES,{
+"Türkiye":"Ankara:32.85,39.93;İstanbul:28.98,41.01;İzmir:27.14,38.42;Bursa:29.06,40.18;Antalya:30.71,36.9;Adana:35.32,37.0;Konya:32.48,37.87;Gaziantep:37.38,37.07;Şanlıurfa:38.8,37.16;Kocaeli:29.92,40.77;Mersin:34.64,36.8;Diyarbakır:40.22,37.91;Hatay:36.16,36.2;Manisa:27.43,38.61;Kayseri:35.49,38.72;Samsun:36.33,41.29;Balıkesir:27.89,39.65;Kahramanmaraş:36.94,37.58;Van:43.38,38.49;Aydın:27.84,37.85;Denizli:29.09,37.78;Sakarya:30.4,40.69;Tekirdağ:27.51,40.98;Muğla:28.36,37.22;Eskişehir:30.52,39.78;Mardin:40.74,37.31;Trabzon:39.72,41.0;Malatya:38.31,38.35;Erzurum:41.27,39.9;Ordu:37.88,40.98;Afyonkarahisar:30.54,38.76;Sivas:37.02,39.75;Tokat:36.55,40.31;Batman:41.13,37.88;Elazığ:39.22,38.67;Zonguldak:31.8,41.45;Çanakkale:26.41,40.15;Kütahya:29.98,39.42;Çorum:34.95,40.55;Adıyaman:38.28,37.76;Osmaniye:36.25,37.07;Giresun:38.39,40.91;Aksaray:34.03,38.37;Yozgat:34.81,39.82;Edirne:26.56,41.68;Düzce:31.16,40.84;Isparta:30.55,37.76;Uşak:29.41,38.68;Kırklareli:27.22,41.74;Bolu:31.6,40.73;Karaman:33.22,37.18;Niğde:34.68,37.97;Nevşehir:34.71,38.62;Kırıkkale:33.51,39.85;Kırşehir:34.16,39.15;Amasya:35.83,40.65;Bilecik:29.98,40.14;Burdur:30.29,37.72;Çankırı:33.62,40.6;Karabük:32.62,41.2;Bartın:32.34,41.64;Kastamonu:33.78,41.38;Sinop:35.15,42.03;Bayburt:40.23,40.26;Gümüşhane:39.48,40.46;Rize:40.52,41.02;Artvin:41.82,41.18;Ardahan:42.7,41.11;Kars:43.1,40.6;Iğdır:44.04,39.92;Ağrı:43.05,39.72;Erzincan:39.5,39.75;Tunceli:39.55,39.11;Bingöl:40.5,38.88;Muş:41.5,38.74;Bitlis:42.12,38.4;Siirt:41.94,37.93;Şırnak:42.46,37.52;Hakkâri:43.74,37.58;Kilis:37.12,36.72;Yalova:29.27,40.65",
+"Rusya":"Moskova:37.6,55.75;St. Petersburg:30.3,59.95;Novosibirsk:82.9,55.0;Yekaterinburg:60.6,56.85;Kazan:49.1,55.8;Nijni Novgorod:44.0,56.3;Çelyabinsk:61.4,55.15;Samara:50.1,53.2;Omsk:73.4,55.0;Rostov:39.7,47.2;Ufa:56.0,54.7;Krasnoyarsk:93.0,56.0;Perm:56.25,58.0;Voronej:39.2,51.65;Volgograd:44.5,48.7;Arhangelsk:40.5,64.55;Murmansk:33.1,68.95;Irkutsk:104.3,52.3;Yakutsk:129.7,62.0;Vladivostok:131.9,43.1;Habarovsk:135.1,48.5;Magadan:150.8,59.55;Norilsk:88.2,69.35;Tümen:65.5,57.15;Saratov:46.0,51.55;Astrahan:48.0,46.35;Mahaçkale:47.5,43.0;Surgut:73.4,61.25;Petropavlovsk:158.65,53.0;Kaliningrad:20.5,54.7;Yujno-Sahalinsk:142.75,46.95;Çita:113.5,52.05;Tomsk:84.95,56.5;Anadir:177.5,64.75",
+"Kazakistan":"Astana:71.4,51.2;Almatı:76.9,43.25;Şımkent:69.6,42.3;Aktöbe:57.2,50.3;Karaganda:73.1,49.8;Atırau:51.9,47.1;Öskemen:82.6,49.95;Kostanay:63.6,53.2;Aktau:51.2,43.65;Kızılorda:65.5,44.85",
+"Özbekistan":"Taşkent:69.25,41.3;Semerkant:66.95,39.65;Buhara:64.4,39.75;Hive:60.35,41.4;Fergana:71.8,40.4;Nukus:59.6,42.45",
+"Türkmenistan":"Aşkabat:58.4,37.95;Merv:62.2,37.6;Türkmenbaşı:53.0,40.0;Daşoğuz:59.95,41.85",
+"Tacikistan":"Duşanbe:68.8,38.55;Hocend:69.6,40.3;Kulob:69.8,37.9;Horog:71.55,37.5",
+"Kırgızistan":"Bişkek:74.6,42.9;Oş:72.8,40.5;Karakol:78.4,42.5;Narın:76.0,41.4",
+"Gürcistan":"Tiflis:44.8,41.7;Batum:41.65,41.65;Kutaisi:42.7,42.25;Gori:44.1,41.98",
+"Ermenistan":"Erivan:44.5,40.2;Gümrü:43.85,40.8;Vanadzor:44.5,40.8;Goris:46.3,39.5",
+"Azerbaycan":"Bakü:49.85,40.4;Gence:46.35,40.7;Nahçıvan:45.4,39.2;Sumgayıt:49.65,40.6;Lenkeran:48.85,38.75",
+"Suriye":"Şam:36.3,33.5;Halep:37.15,36.2;Humus:36.7,34.7;Lazkiye:35.8,35.5;Deyrizor:40.15,35.35;Rakka:39.0,35.95;Kamışlı:41.2,37.05",
+"Irak":"Bağdat:44.4,33.3;Basra:47.8,30.5;Musul:43.15,36.35;Erbil:44.0,36.2;Kerkük:44.4,35.45;Necef:44.3,32.0;Ramadi:43.3,33.4",
+"İran":"Tahran:51.4,35.7;Meşhed:59.6,36.3;İsfahan:51.65,32.65;Şiraz:52.55,29.6;Tebriz:46.3,38.1;Ahvaz:48.7,31.3;Kum:50.9,34.65;Kirman:57.1,30.3;Zahedan:60.85,29.5;Bender Abbas:56.3,27.2;Reşt:49.6,37.3;Yezd:54.35,31.9;Urmiye:45.1,37.55",
+"Suudi Arabistan":"Riyad:46.7,24.65;Cidde:39.2,21.5;Mekke:39.85,21.4;Medine:39.6,24.5;Dammam:50.1,26.4;Tebük:36.55,28.4;Ebha:42.5,18.2;Hail:41.7,27.5;Necran:44.1,17.55",
+"Yemen":"Sana:44.2,15.35;Aden:45.0,12.8;Taiz:44.0,13.6;Hudeyde:42.95,14.8;Mukalla:49.1,14.55",
+"Umman":"Maskat:58.4,23.6;Salala:54.1,17.0;Sohar:56.7,24.35;Nizva:57.5,22.9",
+"BAE":"Abu Dabi:54.4,24.45;Dubai:55.3,25.2;Şarika:55.4,25.35;Fuceyre:56.35,25.1",
+"Katar":"Doha:51.5,25.3;Vakra:51.6,25.15",
+"Kuveyt":"Kuveyt:47.98,29.4;Cehra:47.7,29.35",
+"Ürdün":"Amman:35.9,31.95;Akabe:35.0,29.5;Irbid:35.85,32.55;Zarka:36.1,32.07",
+"İsrail":"Kudüs:35.2,31.77;Tel Aviv:34.8,32.1;Hayfa:35.0,32.8;Birüssebi:34.8,31.25;Eilat:34.95,29.55",
+"Lübnan":"Beyrut:35.5,33.9;Trablusşam:35.85,34.45;Sayda:35.4,33.55;Zahle:35.9,33.85",
+"Afganistan":"Kabil:69.2,34.5;Kandahar:65.7,31.6;Herat:62.2,34.35;Mezar-ı Şerif:67.1,36.7;Celalabad:70.45,34.4",
+"Pakistan":"İslamabad:73.05,33.7;Karaçi:67.0,24.85;Lahor:74.35,31.55;Faysalabad:73.1,31.4;Peşaver:71.55,34.0;Quetta:67.0,30.2;Multan:71.5,30.2;Haydarabad:68.35,25.4;Gilgit:74.3,35.9",
+"Hindistan":"Yeni Delhi:77.2,28.6;Mumbai:72.85,19.05;Kalküta:88.35,22.55;Chennai:80.25,13.1;Bangalore:77.6,12.95;Haydarabad:78.5,17.4;Ahmedabad:72.6,23.0;Pune:73.85,18.5;Jaipur:75.8,26.9;Lucknow:80.95,26.85;Kanpur:80.35,26.45;Nagpur:79.1,21.15;Bhopal:77.4,23.25;Patna:85.15,25.6;Guwahati:91.75,26.15;Srinagar:74.8,34.1;Amritsar:74.85,31.65;Bhubaneswar:85.85,20.3;Kochi:76.3,9.95;Raipur:81.6,21.25;Ranchi:85.3,23.35;Leh:77.6,34.15;Imphal:93.95,24.8",
+"Bangladeş":"Dakka:90.4,23.8;Chittagong:91.8,22.35;Khulna:89.55,22.8;Sylhet:91.85,24.9;Rajshahi:88.6,24.4",
+"Nepal":"Katmandu:85.3,27.7;Pokhara:83.95,28.2;Biratnagar:87.3,26.45;Nepalgunj:81.6,28.05",
+"Butan":"Thimphu:89.65,27.5;Paro:89.4,27.4;Mongar:91.2,27.25",
+"Sri Lanka":"Kolombo:79.85,6.9;Kandy:80.65,7.3;Jaffna:80.0,9.65;Galle:80.2,6.05;Trincomalee:81.2,8.6",
+"Moğolistan":"Ulan Batur:106.9,47.9;Erdenet:104.1,49.0;Darhan:105.95,49.5;Hovd:91.65,48.0;Choibalsan:114.5,48.1;Dalanzadgad:104.4,43.6",
+"Çin":"Pekin:116.4,39.9;Şanghay:121.5,31.2;Guangzhou:113.3,23.1;Shenzhen:114.05,22.55;Chongqing:106.55,29.55;Tianjin:117.2,39.1;Chengdu:104.05,30.65;Wuhan:114.3,30.6;Xian:108.95,34.3;Nanjing:118.8,32.05;Hangzhou:120.15,30.25;Shenyang:123.4,41.8;Harbin:126.65,45.75;Jinan:117.0,36.65;Zhengzhou:113.65,34.75;Changsha:112.95,28.2;Kunming:102.7,25.05;Urumçi:87.6,43.8;Lanzhou:103.8,36.05;Taiyuan:112.55,37.85;Hefei:117.3,31.85;Nanchang:115.85,28.7;Fuzhou:119.3,26.1;Nanning:108.35,22.8;Guiyang:106.7,26.6;Hohhot:111.7,40.85;Yinchuan:106.25,38.5;Xining:101.75,36.6;Haikou:110.35,20.05;Changchun:125.3,43.9;Dalian:121.6,38.9;Kaşgar:75.99,39.47;Qingdao:120.4,36.07",
+"Tibet":"Lhasa:91.1,29.65;Shigatse:88.9,29.25;Nagqu:92.05,31.5;Qamdo:97.2,31.15;Ali:80.1,32.5",
+"Tayvan":"Taipei:121.55,25.05;Kaohsiung:120.3,22.6;Taichung:120.65,24.15;Hualien:121.6,23.97",
+"Kuzey Kore":"Pyongyang:125.75,39.0;Hamhung:127.55,39.9;Chongjin:129.75,41.8;Sinuiju:124.4,40.1;Wonsan:127.45,39.15",
+"Güney Kore":"Seul:127.0,37.55;Pusan:129.05,35.15;Daegu:128.6,35.85;Incheon:126.7,37.45;Gwangju:126.85,35.15;Daejeon:127.4,36.35;Jeju:126.55,33.5",
+"Japonya":"Tokyo:139.7,35.7;Osaka:135.5,34.7;Nagoya:136.9,35.2;Sapporo:141.35,43.05;Fukuoka:130.4,33.6;Hiroşima:132.45,34.4;Sendai:140.9,38.25;Kyoto:135.75,35.0;Kagoshima:130.55,31.6;Niigata:139.05,37.9;Naha:127.7,26.2",
+"Tayland":"Bangkok:100.5,13.75;Chiang Mai:98.99,18.8;Phuket:98.4,7.9;Khon Kaen:102.85,16.45;Hat Yai:100.45,7.0;Pattaya:100.9,12.9",
+"Vietnam":"Hanoi:105.85,21.0;Ho Chi Minh:106.65,10.8;Da Nang:108.2,16.05;Hue:107.6,16.45;Hai Phong:106.7,20.85;Can Tho:105.8,10.05;Dien Bien Phu:103.0,21.4",
+"Myanmar":"Naypyidaw:96.1,19.75;Yangon:96.15,16.85;Mandalay:96.1,21.95;Sittwe:92.9,20.15;Myitkyina:97.4,25.4;Mawlamyine:97.6,16.5",
+"Laos":"Vientiane:102.6,17.97;Luang Prabang:102.15,19.9;Pakse:105.8,15.1;Savannakhet:104.75,16.55",
+"Kamboçya":"Phnom Penh:104.9,11.55;Siem Reap:103.85,13.35;Battambang:103.2,13.1;Sihanoukville:103.5,10.6",
+"Malezya":"Kuala Lumpur:101.7,3.15;Singapur:103.85,1.3;Penang:100.3,5.4;Johor Bahru:103.75,1.5;Kota Bharu:102.25,6.1",
+"Endonezya":"Cakarta:106.85,-6.2;Surabaya:112.75,-7.25;Bandung:107.6,-6.9;Medan:98.7,3.6;Semarang:110.4,-7.0;Makassar:119.4,-5.15;Palembang:104.75,-2.95;Denpasar:115.2,-8.65;Padang:100.35,-0.95;Banda Aceh:95.3,5.55",
+"Borneo":"Bandar Seri Begawan:114.95,4.9;Kuching:110.35,1.55;Pontianak:109.3,0.0;Balikpapan:116.85,-1.25;Kota Kinabalu:116.05,5.98;Banjarmasin:114.6,-3.3",
+"Filipinler":"Manila:121.0,14.6;Cebu:123.9,10.3;Davao:125.6,7.1;Quezon City:121.05,14.65;Zamboanga:122.07,6.9;Baguio:120.6,16.4",
+"Yeni Gine":"Port Moresby:147.15,-9.45;Jayapura:140.7,-2.55;Lae:147.0,-6.7;Merauke:140.4,-8.5;Sorong:131.25,-0.87",
+"Avustralya":"Canberra:149.1,-35.3;Sidney:151.2,-33.85;Melbourne:144.95,-37.8;Brisbane:153.0,-27.45;Perth:115.85,-31.95;Adelaide:138.6,-34.9;Darwin:130.85,-12.45;Hobart:147.3,-42.9;Alice Springs:133.9,-23.7;Cairns:145.75,-16.9;Broome:122.2,-18.0;Townsville:146.8,-19.25",
+"Yeni Zelanda":"Wellington:174.8,-41.3;Auckland:174.75,-36.85;Christchurch:172.65,-43.55;Dunedin:170.5,-45.9;Hamilton:175.3,-37.8"
+});
+Object.assign(CITIES,{
+"Fas":"Rabat:-6.85,34.0;Kazablanka:-7.6,33.55;Marakeş:-8.0,31.65;Fes:-5.0,34.05;Tanca:-5.8,35.75;Agadir:-9.6,30.4;El Ayun:-13.2,27.15",
+"Cezayir":"Cezayir:3.05,36.75;Vahran:-0.65,35.7;Konstantin:6.6,36.35;Annaba:7.75,36.9;Tamanrasset:5.5,22.8;Bechar:-2.2,31.6;Gardaya:3.7,32.5;Ouargla:5.3,31.95",
+"Tunus":"Tunus:10.2,36.8;Sfax:10.75,34.75;Susa:10.65,35.8;Gabes:10.1,33.9;Tozeur:8.1,33.9",
+"Libya":"Trablus:13.2,32.9;Bingazi:20.05,32.1;Misrata:15.1,32.4;Sebha:14.4,27.0;Tobruk:23.95,32.1;Kufra:23.3,24.2",
+"Mısır":"Kahire:31.25,30.05;İskenderiye:29.9,31.2;Giza:31.2,30.0;Asvan:32.9,24.1;Luksor:32.65,25.7;Port Said:32.3,31.25;Şarm el-Şeyh:34.3,27.9;Siwa:25.5,29.2",
+"Sudan":"Hartum:32.55,15.6;Omdurman:32.5,15.65;Port Sudan:37.2,19.6;Kassala:36.4,15.45;Dongola:30.5,19.2;El Fasher:25.35,13.6;Nyala:24.9,12.05",
+"Güney Sudan":"Cuba:31.6,4.85;Wau:28.0,7.7;Malakal:31.65,9.55;Yei:30.7,4.1",
+"Eritre":"Asmara:38.95,15.3;Massawa:39.45,15.6;Keren:38.45,15.8",
+"Etiyopya":"Addis Ababa:38.75,9.0;Dire Dawa:41.85,9.6;Mekele:39.45,13.5;Gondar:37.45,12.6;Hawassa:38.5,7.05;Bahir Dar:37.4,11.6;Jimma:36.85,7.67",
+"Somali":"Mogadişu:45.35,2.05;Hargeisa:44.05,9.55;Kismayo:42.55,-0.35;Bosaso:49.15,11.3;Garowe:48.5,8.4",
+"Moritanya":"Nouakchott:-15.95,18.1;Nouadhibou:-17.0,20.9;Atar:-13.05,20.5;Kiffa:-11.4,16.6;Zouerate:-12.5,22.7",
+"Mali":"Bamako:-8.0,12.65;Timbuktu:-3.0,16.75;Gao:-0.05,16.27;Mopti:-4.2,14.5;Kayes:-11.45,14.45;Kidal:1.4,18.45",
+"Nijer":"Niamey:2.1,13.5;Agadez:7.99,16.97;Zinder:8.99,13.8;Maradi:7.1,13.5;Arlit:7.35,18.7",
+"Çad":"Encamina:15.05,12.1;Abeşe:20.85,13.8;Moundou:16.1,8.55;Faya-Largeau:19.1,17.9;Sarh:18.4,9.15",
+"Nijerya":"Abuja:7.5,9.05;Lagos:3.4,6.45;Kano:8.5,12.0;Ibadan:3.9,7.4;Port Harcourt:7.0,4.8;Kaduna:7.45,10.5;Maiduguri:13.15,11.85;Enugu:7.5,6.45;Sokoto:5.25,13.05;Benin City:5.6,6.35",
+"Senegal":"Dakar:-17.45,14.7;Saint-Louis:-16.5,16.0;Kaolack:-16.1,14.15;Tambacounda:-13.7,13.75;Ziguinchor:-16.27,12.55",
+"Gine":"Konakri:-13.7,9.5;Kankan:-9.3,10.4;Labe:-12.3,11.3;Nzerekore:-8.8,7.75",
+"Liberya":"Monrovia:-10.8,6.3;Buchanan:-10.05,5.9;Harper:-7.7,4.4;Gbarnga:-9.5,7.0",
+"Burkina Faso":"Wagadugu:-1.5,12.35;Bobo-Dioulasso:-4.3,11.2;Ouahigouya:-2.4,13.6;Dori:0.0,14.0",
+"Fildişi Sahili":"Yamoussoukro:-5.3,6.8;Abidjan:-4.0,5.3;Bouake:-5.0,7.7;Korhogo:-5.65,9.45;San Pedro:-6.6,4.75",
+"Gana":"Akra:-0.2,5.6;Kumasi:-1.6,6.7;Tamale:-0.85,9.4;Takoradi:-1.75,4.9",
+"Benin":"Porto-Novo:2.6,6.5;Cotonou:2.4,6.35;Parakou:2.6,9.35;Natitingou:1.4,10.3",
+"Kamerun":"Yaounde:11.5,3.85;Douala:9.7,4.05;Garoua:13.4,9.3;Bamenda:10.15,5.95;Maroua:14.3,10.6",
+"Gabon":"Libreville:9.45,0.4;Port-Gentil:8.8,-0.7;Franceville:13.6,-1.65",
+"Kongo Cumhuriyeti":"Brazzaville:15.3,-4.25;Pointe-Noire:11.85,-4.8;Ouesso:16.05,1.6",
+"Orta Afrika":"Bangui:18.55,4.35;Bambari:20.65,5.75;Berberati:15.8,4.25;Birao:22.8,10.3",
+"Kongo":"Kinşasa:15.3,-4.3;Lubumbashi:27.5,-11.65;Kisangani:25.2,0.5;Mbuji-Mayi:23.6,-6.15;Goma:29.2,-1.7;Kananga:22.4,-5.9;Mbandaka:18.25,0.05;Bukavu:28.85,-2.5",
+"Uganda":"Kampala:32.6,0.3;Gulu:32.3,2.77;Mbarara:30.65,-0.6;Jinja:33.2,0.45;Arua:30.9,3.0",
+"Kenya":"Nairobi:36.8,-1.3;Mombasa:39.65,-4.05;Kisumu:34.75,-0.1;Nakuru:36.07,-0.3;Eldoret:35.3,0.5;Garissa:39.65,-0.45;Lodwar:35.6,3.1",
+"Tanzanya":"Dodoma:35.75,-6.2;Dar es Salaam:39.3,-6.8;Mwanza:32.9,-2.5;Arusha:36.7,-3.4;Mbeya:33.45,-8.9;Kigoma:29.6,-4.9;Zanzibar:39.2,-6.15",
+"Angola":"Luanda:13.25,-8.85;Huambo:15.75,-12.75;Lobito:13.55,-12.35;Lubango:13.5,-14.9;Malanje:16.35,-9.55;Cabinda:12.2,-5.55;Menongue:17.7,-14.65",
+"Zambiya":"Lusaka:28.3,-15.4;Ndola:28.65,-12.95;Kitwe:28.2,-12.8;Livingstone:25.85,-17.85;Kasama:31.2,-10.2",
+"Malavi":"Lilongwe:33.8,-13.95;Blantyre:35.0,-15.8;Mzuzu:34.0,-11.45",
+"Zimbabve":"Harare:31.05,-17.85;Bulawayo:28.6,-20.15;Mutare:32.65,-18.97;Victoria Şelaleleri:25.85,-17.9",
+"Namibya":"Windhoek:17.1,-22.55;Walvis Bay:14.5,-22.95;Rundu:19.75,-17.9;Keetmanshoop:18.15,-26.6;Katima Mulilo:24.25,-17.5",
+"Botsvana":"Gaborone:25.9,-24.65;Francistown:27.5,-21.2;Maun:23.4,-19.98;Ghanzi:21.65,-21.7",
+"Güney Afrika":"Pretoria:28.2,-25.75;Cape Town:18.4,-33.9;Johannesburg:28.05,-26.2;Durban:31.0,-29.85;Port Elizabeth:25.6,-33.95;Bloemfontein:26.2,-29.1;Kimberley:24.75,-28.75;East London:27.9,-33.0;Polokwane:29.45,-23.9;Upington:21.25,-28.45",
+"Mozambik":"Maputo:32.6,-25.95;Beira:34.85,-19.85;Nampula:39.25,-15.1;Quelimane:36.9,-17.9;Tete:33.6,-16.15;Pemba:40.5,-12.95;Lichinga:35.25,-13.3",
+"Madagaskar":"Antananarivo:47.5,-18.9;Toamasina:49.4,-18.15;Antsiranana:49.3,-12.3;Mahajanga:46.3,-15.7;Toliara:43.7,-23.35;Fianarantsoa:47.1,-21.45"
+});
+const $=id=>document.getElementById(id);
+
+// ---- Ses (tarayıcıda üretilir, dosya yok) ----
+let AC=null,master=null,soundOn=true,musicTimer=null,nextT=0,mstepN=0;
+try{soundOn=localStorage.getItem('dunya-fatihi-ses')!=='0'}catch(e){}
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=0.9;master.connect(AC.destination)}catch(e){return null}}
+  if(AC.state==='suspended')AC.resume().catch(()=>{});return AC}
+function voice(f,d,type,v,when,cut,att){const a=ac();if(!a||!soundOn)return;const t=when,at=att||0.02;
+  const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
+  let n=o;if(cut){const fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=cut;o.connect(fl);n=fl}
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+at);g.gain.setValueAtTime(v,t+Math.max(at,d-0.08));g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  n.connect(g);g.connect(master);o.start(t);o.stop(t+d+0.05)}
+function nz(t,d,v,freq,type){const a=ac();if(!a||!soundOn)return;
+  const n=Math.floor(a.sampleRate*d),buf=a.createBuffer(1,n,a.sampleRate),data=buf.getChannelData(0);
+  for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const src=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();
+  f.type=type||'bandpass';f.frequency.value=freq||700;g.gain.value=v||0.2;src.buffer=buf;src.connect(f);f.connect(g);g.connect(master);src.start(t)}
+function tone(f,d,type,v,t0,slide){const a=ac();if(!a||!soundOn)return;const t=a.currentTime+(t0||0),o=a.createOscillator(),g=a.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v||0.12,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+d+0.05)}
+function drum(t,kind){const a=ac();if(!a||!soundOn)return;
+  if(kind==='kick'){const o=a.createOscillator(),g=a.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(46,t+.22);
+    g.gain.setValueAtTime(.55,t);g.gain.exponentialRampToValueAtTime(.0001,t+.34);o.connect(g);g.connect(master);o.start(t);o.stop(t+.36);nz(t,.07,.14,260)}
+  else nz(t,.14,.17,1900)}
+function now(){const a=ac();return a?a.currentTime:0}
+function H(f,d,v,t0,cut){voice(f,d,'sawtooth',v,now()+(t0||0),cut||1500,.04)}
+function boom(t0){const t=now()+(t0||0);nz(t,.6,.32,150,'lowpass');tone(78,.55,'sine',.3,t0||0,-42)}
+function roll(d,t0){const t=now()+(t0||0),n=Math.floor(d/.045);for(let i=0;i<n;i++)nz(t+i*.045,.1,.05+.1*i/n,1900)}
+const SFX={
+  tap(){tone(520,.05,'triangle',.06)},
+  coin(){tone(1250,.07,'square',.04);tone(1680,.12,'square',.04,.07)},
+  win(){boom();H(294,.18,.05,.12);H(440,.32,.05,.28)},
+  fail(){tone(150,.45,'sine',.22,0,-80);nz(now(),.3,.1,220,'lowpass')},
+  capital(){boom();[294,392,440,587].forEach((f,i)=>H(f,.38,.06,.15+i*.17))},
+  war(){H(98,1.2,.1,0,520);H(147,1.2,.06,.12,650);roll(.5,.3);boom(.85)},
+  peace(){[392,494,587].forEach((f,i)=>tone(f,.4,'triangle',.1,i*.15))},
+  dialog(){H(392,.16,.04,0,1100);H(587,.24,.04,.16,1100)},
+  lost(){boom();[330,277,220].forEach((f,i)=>H(f,.42,.06,i*.22,900))},
+  turn(){roll(.45);boom(.46)},
+  winGame(){[294,392,494,587,784].forEach((f,i)=>H(f,.5,.07,i*.17,1800));boom(.1)},
+  loseGame(){[294,262,233,196].forEach((f,i)=>H(f,.7,.06,i*.35,700));boom(1.2)}
+};
+// fon müziği: epik orkestra havası (yaylı pad, kalın taiko, ağır borazan melodisi) - özgün
+const STEP=0.3;
+const CH=[[73.4,146.8,174.6,220],[58.3,116.5,146.8,174.6],[49,98,116.5,146.8],[55,110,138.6,164.8],[73.4,146.8,174.6,220],[58.3,116.5,146.8,174.6],[43.65,87.3,110,130.8],[55,110,138.6,164.8]];
+const MEL=[[[440,0,6],[392,6,2],[349.2,8,4],[392,12,4]],[[466.2,0,6],[440,6,2],[392,8,4],[349.2,12,4]],[[392,0,6],[349.2,6,2],[293.7,8,4],[392,12,4]],[[440,0,8],[554.4,8,4],[440,12,4]],
+[[587.3,0,6],[523.3,6,2],[440,8,4],[349.2,12,4]],[[587.3,0,4],[523.3,4,4],[466.2,8,4],[440,12,4]],[[349.2,0,4],[392,4,4],[440,8,4],[523.3,12,4]],[[554.4,0,8],[587.3,8,8]]];
+function musicTick(){if(!soundOn||document.hidden||!AC||AC.state!=='running')return;
+  if(nextT<AC.currentTime)nextT=AC.currentTime+0.05;
+  while(nextT<AC.currentTime+0.5){const s=mstepN%16,bar=Math.floor(mstepN/16)%8,odd=bar%2===1,len=16*STEP;
+    if(s===0){const c=CH[bar];
+      voice(c[0],len,'sawtooth',.05,nextT,380,.6);
+      for(let k=1;k<4;k++){voice(c[k],len,'sawtooth',.014,nextT,900,1.0);voice(c[k]*1.004,len,'sawtooth',.012,nextT,900,1.0)}
+      if(bar%4===0)nz(nextT,1.4,.07,5200,'highpass')}
+    if(s===0||s===8)drum(nextT,'kick');
+    if(odd&&(s===12||s===14))drum(nextT,'kick');
+    if(bar===7&&s>=8)drum(nextT,'snare');
+    MEL[bar].forEach(m=>{if(m[1]===s){voice(m[0],m[2]*STEP,'sawtooth',.034,nextT,1500,.12);voice(m[0]*2,m[2]*STEP,'triangle',.012,nextT,2500,.12)}});
+    nextT+=STEP;mstepN++}}
+function startMusic(){if(!musicTimer)musicTimer=setInterval(musicTick,120)}
+function sndLabel(){const b=$('bSnd');if(b){b.textContent=soundOn?'♪':'✕';b.setAttribute('aria-pressed',soundOn?'true':'false')}}
+const cv=$('c'),ctx=cv.getContext('2d');
+const T=[...M1,...M2,...M3,...M4,...M5].map(([name,pow,f],i)=>{
+  let p=[];for(let k=0;k<f.length;k+=2)p.push([f[k],f[k+1]]);
+  for(let r=0;r<2;r++){const q=[];for(let k=0;k<p.length;k++){const a=p[k],b=p[(k+1)%p.length];q.push(a,[(a[0]+b[0])/2,(a[1]+b[1])/2]);}p=q;}
+  let cx=0,cy=0;p.forEach(v=>{cx+=v[0];cy+=v[1]});
+  const X=p.map(v=>v[0]),Y=p.map(v=>v[1]);
+  return{id:i,name,pow,p,cx:cx/p.length,cy:cy/p.length,owner:i,nb:[],bb:[Math.min(...X),Math.min(...Y),Math.max(...X),Math.max(...Y)]};
+});
+T.forEach(t=>{let a=0;for(let i=0,j=t.p.length-1;i<t.p.length;j=i++)a+=t.p[j][0]*t.p[i][1]-t.p[i][0]*t.p[j][1];t.area=Math.abs(a/2)});
+const TD=[...T].sort((a,b)=>b.area-a.area);
+for(const a of T)for(const b of T){if(a===b||a.nb.includes(b.id)||a.bb[0]-3.2>b.bb[2]||b.bb[0]-3.2>a.bb[2]||a.bb[1]-3.2>b.bb[3]||b.bb[1]-3.2>a.bb[3])continue;
+  let hit=false;for(const u of a.p){for(const v of b.p){if(Math.hypot(u[0]-v[0],u[1]-v[1])<3.2){hit=true;break}}if(hit)break}
+  if(hit){a.nb.push(b.id);b.nb.push(a.id)}}
+function inside(p,x,y){let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const a=p[i],b=p[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+const C=[];
+function clipHalf(poly,sx,sy,qx,qy){const mx=(sx+qx)/2,my=(sy+qy)/2,dx=qx-sx,dy=qy-sy,f=p=>(p[0]-mx)*dx+(p[1]-my)*dy,out=[];
+  for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],fa=f(a),fb=f(b);
+    if(fa<=0)out.push(a);
+    if((fa<0&&fb>0)||(fa>0&&fb<0)){const k=fa/(fa-fb);out.push([a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k])}}
+  return out}
+const DIR=['Doğu','Kuzeydoğu','Kuzey','Kuzeybatı','Batı','Güneybatı','Güney','Güneydoğu'];
+T.forEach(t=>{
+  const x0=t.bb[0],x1=t.bb[2],y0=t.bb[1],y1=t.bb[3];
+  const step=Math.max(0.2,Math.max(x1-x0,y1-y0)/150),pts=[];
+  for(let x=x0;x<=x1;x+=step)for(let y=y0;y<=y1;y+=step)if(inside(t.p,x,y))pts.push([x,y]);
+  if(!pts.length)pts.push([t.cx,t.cy]);
+  let ch=[],pn=[],real=false;
+  const list=CITIES[t.name];
+  if(list){real=true;const used=new Set();
+    for(const e of list.split(';')){const i=e.lastIndexOf(':'),nm=e.slice(0,i),[lo,la]=e.slice(i+1).split(',').map(Number);
+      let q=null;
+      if(inside(t.p,lo,la)){q=[lo,la];if(ch.some(h=>Math.hypot(h[0]-lo,h[1]-la)<0.05))q=[lo+0.08,la+0.05]}
+      else{let bi=-1,bd=1e9;for(let k=0;k<pts.length;k++){if(used.has(k))continue;const d=(pts[k][0]-lo)**2+(pts[k][1]-la)**2;if(d<bd){bd=d;bi=k}}
+        if(bi>=0){used.add(bi);q=pts[bi]}}
+      if(q){ch.push(q);pn.push(nm)}}}
+  if(ch.length<2){
+    const names=(CITY_DATA[t.name]||t.name).split(',');real=false;ch=[];pn=[];
+    const n=Math.min(14,Math.max(2,names.length,Math.round(Math.sqrt(t.area)/2.2)));
+    ch=[pts.reduce((b,q)=>Math.hypot(q[0]-t.cx,q[1]-t.cy)<Math.hypot(b[0]-t.cx,b[1]-t.cy)?q:b)];
+    while(ch.length<n){let best=null,bd=-1;for(const q of pts){const d=Math.min(...ch.map(h=>Math.hypot(h[0]-q[0],h[1]-q[1])));if(d>bd){bd=d;best=q}}if(!best||bd<=0)break;ch.push(best)}
+    const used={};
+    ch.forEach((q,k)=>{if(k<names.length)pn.push(names[k]);else{const dist=Math.hypot(q[0]-t.cx,q[1]-t.cy),ang=Math.atan2(q[1]-t.cy,q[0]-t.cx);
+      let nm=(dist<0.6?'Merkez':DIR[(Math.round(ang/(Math.PI/4))+8)%8])+' '+t.name;if(used[nm]){used[nm]++;nm+=' '+used[nm]}else used[nm]=1;pn.push(nm)}})}
+  t.cities=[];
+  ch.forEach((q,k)=>{
+    let poly=t.p;for(let j=0;j<ch.length&&poly.length>=3;j++)if(j!==k)poly=clipHalf(poly,q[0],q[1],ch[j][0],ch[j][1]);
+    if(poly.length<3)poly=[[q[0]-.1,q[1]-.1],[q[0]+.1,q[1]-.1],[q[0]+.1,q[1]+.1],[q[0]-.1,q[1]+.1]];
+    const X=poly.map(v=>v[0]),Y=poly.map(v=>v[1]);
+    const c={id:C.length,name:pn[k],t:t.id,cap:k===0,real:real||k<(CITY_DATA[t.name]||t.name).split(',').length,x:q[0],y:q[1],p:poly,bb:[Math.min(...X),Math.min(...Y),Math.max(...X),Math.max(...Y)],owner:t.owner};
+    C.push(c);t.cities.push(c.id)});
+});
+let E=[],me=0,year=1900,sel=null,selC=null,over=false,moves=5;
+let rel={},war={},ally={};
+function declareWar(a,b){war[rk(a,b)]=1;delete ally[rk(a,b)];setR(a,b,R(a,b)-30)}
+const rk=(a,b)=>Math.min(a,b)+'_'+Math.max(a,b);
+function R(a,b){return rel[rk(a,b)]||0}
+function setR(a,b,v){rel[rk(a,b)]=Math.max(-100,Math.min(100,v))}
+function relName(o){const r=R(me,o);return r>=30?'Dost':r<=-30?'Düşman':r>=10?'Olumlu':r<=-10?'Gergin':'Tarafsız'}
+const hue=i=>(i*47)%360;
+const col=(i,l)=>`hsl(${hue(i)} 45% ${l}%)`;
+function startGame(h){
+  applyScn(scn);
+  E=T.map((t,i)=>({gold:60,army:T.filter(x=>x.owner===i).reduce((s,x)=>s+x.pow*(x.id===i?30:6),0),human:i===h}));
+  me=h;year=scn.year;sel=null;selC=null;moves=5;gid=null;over=false;
+  $('menu').hidden=true;fit();say('Yıl '+year+' ('+scn.name+'). '+T[h].name+' ordusu hazır.');ui();draw();
+}
+function sovereign(o){return owned(o).length>0&&C[T[o].cities[0]].owner===o}
+function owned(o){return C.filter(c=>c.owner===o)}
+function touch(a,t){return t.cities.some(k=>C[k].owner===a)||t.nb.some(n=>T[n].cities.some(k=>C[k].owner===a))}
+function ui(){
+  const t=owned(me);$('who').textContent=T[me].name;$('yr').textContent='Yıl '+year;
+  $('gold').textContent='Altın '+Math.floor(E[me].gold);$('army').textContent='Ordu '+Math.floor(E[me].army);
+  const c=selC==null?null:C[selC],s=c?T[c.t]:null;
+  $('t').textContent=c?(c.cap?'★ ':'')+c.name:'Bir şehre dokun';
+  let can=false;
+  if(c){const o=c.owner,mine=o===me;
+    let x=(c.cap?'Başkent':c.real?'Şehir':'Bölge')+' · '+s.name+' · '+(mine?'Senin':'Sahibi: '+T[o].name)+' · Ordu '+Math.floor(E[o].army)+(mine?'':' · İlişki: '+relName(o)+(war[rk(me,o)]?' · SAVAŞTA':ally[rk(me,o)]?' · Müttefik':''));
+    if(c.cap&&!mine)x+=' · Başkent: alınırsa ganimet verir';
+    can=!mine&&!over;
+    if(!mine&&!touch(me,s))x+=' · Sınırın yok: deniz aşırı saldırı (%40 zayıf)';
+    $('info').textContent=x;
+  }else $('info').textContent='Haritayı sürükle, iki parmakla yakınlaştır. Bir şehre dokun. '+t.length+' / '+C.length+' şehir senin.';
+  $('bAtk').disabled=!can;$('bCity').disabled=!s;$('bRec').disabled=E[me].gold<50||over;$('bEnd').disabled=over;
+  const foreign=!!c&&c.owner!==me&&!over;$('bAsk').disabled=$('bArmy').disabled=!foreign;$('bGift').disabled=!foreign||E[me].gold<50;
+  const oo=c?c.owner:me,k=rk(me,oo);
+  $('bAtk').textContent=oo===me?'Saldır':ally[k]?'Müttefik':war[k]?'Saldır':'Savaş ilan et';
+  $('bAlly').textContent=ally[k]?'İttifakı boz':'İttifak teklif et';
+  $('bAlly').disabled=!foreign;$('bPeace').disabled=!foreign||!war[k];
+}
+function say(m){const d=document.createElement('div');d.textContent=m;$('log').appendChild(d);
+  while($('log').children.length>3)$('log').firstChild.remove();setTimeout(()=>d.remove(),5000)}
+function attackCity(a,ci){
+  const c=C[ci],t=T[c.t],d=c.owner,ea=E[a],ed=E[d];setR(a,d,R(a,d)-40);
+  const lostN=t.cities.filter(k=>C[k].owner!==d).length;
+  const near=touch(a,t);
+  const atk=ea.army*0.5*(0.7+Math.random()*0.6)*(near?1:0.6);
+  const f=c.cap?1.5*Math.max(0.4,1-0.6*lostN/Math.max(1,t.cities.length-1)):0.45;
+  const def=(ed.army*0.35+t.pow*20+30)*f;
+  if(atk>def){ea.army-=Math.min(ea.army*0.3,def*0.8);ed.army*=0.93;
+    c.owner=a;if(c.cap){ea.gold+=60;ed.army*=0.85;return 'cap'}return 'city'}
+  ea.army-=atk*0.4;return false;
+}
+function endTurn(){
+  const lost=[];SFX.turn();
+  for(let i=0;i<E.length;i++){const n=owned(i);if(!n.length)continue;
+    E[i].gold+=n.reduce((s,c)=>s+T[c.t].pow*12/T[c.t].cities.length,0);
+    if(!E[i].human){
+      while(E[i].gold>=50){E[i].gold-=50;E[i].army+=40}
+      const hostile=!!war[rk(i,me)];
+      for(let q=0;q<(hostile?2:1);q++)if(Math.random()<(hostile?0.9:0.2)){
+        const tset=new Set();n.forEach(c=>{tset.add(c.t);T[c.t].nb.forEach(x=>tset.add(x))});
+        const cand=[];tset.forEach(ti=>T[ti].cities.forEach(k=>{const o=C[k].owner;if(o!==i&&!ally[rk(i,o)]&&!(o===me&&R(i,me)>=30))cand.push(k)}));
+        let pool;
+        if(hostile){const mine=owned(me).map(c=>c.id),near=mine.filter(k=>touch(i,T[C[k].t]));pool=near.length?near:mine}
+        else{const hos=cand.filter(k=>C[k].owner===me&&R(i,me)<=-30);pool=hos.length&&Math.random()<0.7?hos:cand}
+        if(pool.length){const nc=pool.filter(k=>!C[k].cap),k=nc.length&&Math.random()<0.7?nc[Math.floor(Math.random()*nc.length)]:pool[Math.floor(Math.random()*pool.length)];
+          const was=C[k].owner;
+          if(!war[rk(i,was)]&&(R(i,was)<=-10||Math.random()<0.15)){declareWar(i,was);if(was===me){say(T[i].name+' sana savaş ilan etti!');SFX.war()}}
+          if(war[rk(i,was)]){const r=attackCity(i,k);if(r&&was===me)lost.push([i,C[k].name,r==='cap',T[C[k].t].name])}}}
+    }else E[i].army+=Math.ceil(n.length/3)*3;
+  }
+  year++;
+  const mine=owned(me).length;
+  if(!mine){over=true;say('Tüm topraklarını kaybettin. Oyun bitti.');SFX.loseGame();}
+  else if(mine===C.length){over=true;say('Dünya senin! Tebrikler.');SFX.winGame();}
+  sel=null;ui();draw();saveGame();
+  const nextAsk=()=>{if(over)return;const ai=E.map((e,i)=>i).filter(i=>i!==me&&sovereign(i));
+    const wo=ai.filter(o=>war[rk(me,o)]);
+    if(wo.length&&Math.random()<0.6){const o=wo[Math.floor(Math.random()*wo.length)];if(E[o].army<E[me].army||Math.random()<0.3){peaceDlg(o);return}}
+    if(ai.length&&Math.random()<0.6){const who=ai[Math.floor(Math.random()*ai.length)];if(Math.random()<0.5)askDlg(who,[30,50,80,100][Math.floor(Math.random()*4)]);else askDlg(who,[20,40,60][Math.floor(Math.random()*3)],'army')}else if(Math.random()<0.4)eventDlg()};
+  if(lost.length)lossDlg(lost,nextAsk);else nextAsk();
+}
+function peaceDlg(o){
+  $('dt').textContent=T[o].name+' barış istiyor';
+  $('dp').textContent='Savaşı bitirmeyi teklif ediyor. Kabul edersen iki taraf da saldırmayı bırakır.';
+  const y=$('dy'),n=$('dn');y.textContent='Barışı kabul et';y.disabled=false;n.hidden=false;n.textContent='Savaşa devam';
+  const end=m=>{$('dlg').hidden=true;say(m);ui();saveGame()};
+  y.onclick=()=>{delete war[rk(me,o)];setR(me,o,R(me,o)+15);SFX.peace();end('Barış yapıldı.')};
+  n.onclick=()=>{setR(me,o,R(me,o)-5);end(T[o].name+' teklifin reddedilmesine bozuldu.')};
+  $('dlg').hidden=false;
+}
+function lossDlg(list,next){
+  $('dt').textContent='Toprağımız alındı!';
+  $('dp').innerHTML=list.map(([i,n,cap,tn])=>cap?'<b>'+T[i].name+'</b>, başkenti <b>'+n+'</b> şehrini ele geçirdi!':'<b>'+T[i].name+'</b>, <b>'+n+'</b> şehrini ele geçirdi.').join('<br>')+(over?'<br>Tüm topraklarını kaybettin.':'');
+  const y=$('dy'),n=$('dn');y.textContent='Tamam';y.disabled=false;n.hidden=true;
+  y.onclick=()=>{$('dlg').hidden=true;n.hidden=false;ui();saveGame();next&&next()};
+  $('dlg').hidden=false;
+}
+function eventDlg(){
+  const al=E.map((e,i)=>i).filter(i=>i!==me&&sovereign(i));if(!al.length)return;
+  const p=al[Math.floor(Math.random()*al.length)];
+  const ev=[
+   {t:'Kıtlık',d:'Halk aç kalıyor. Tahıl dağıtmak 60 altına mal olur.',
+    a:['Tahıl dağıt (60 altın)',()=>{E[me].gold-=60;E[me].army+=10;return 'Halk sevindi, 10 gönüllü orduya katıldı.'},()=>E[me].gold>=60],
+    b:['Aldırma',()=>{E[me].army*=0.9;return 'Aç kalan askerlerin %10\'u ordudan ayrıldı.'}]},
+   {t:'Ayaklanma',d:'Bir şehirde isyan çıktı.',
+    a:['Ordu gönder (30 asker)',()=>{E[me].army-=30;return 'İsyan bastırıldı.'},()=>E[me].army>=30],
+    b:['Görmezden gel',()=>{E[me].gold*=0.85;return 'İsyan hazineyi vurdu, altının %15\'i gitti.'}]},
+   {t:'Altın bulundu',d:'Topraklarında yeni bir altın madeni keşfedildi.',
+    a:['Kendin işlet (+120 altın)',()=>{E[me].gold+=120;return '120 altın kazandın.'}],
+    b:[T[p].name+'\'e kirala (+60 altın)',()=>{E[me].gold+=60;setR(me,p,R(me,p)+10);return T[p].name+' ile ilişkiniz düzeldi.'}]},
+   {t:T[p].name+' ticaret öneriyor',d:'Karşılıklı bir ticaret anlaşması teklif ediyor.',
+    a:['Kabul et (+80 altın)',()=>{E[me].gold+=80;setR(me,p,R(me,p)+15);return 'Anlaşma imzalandı.'}],
+    b:['Reddet',()=>{setR(me,p,R(me,p)-5);return T[p].name+' teklifin reddedilmesine bozuldu.'}]},
+   {t:'Salgın',d:'Ordu kamplarında salgın başladı. Karantina 50 altına mal olur.',
+    a:['Karantina (50 altın)',()=>{E[me].gold-=50;return 'Salgın kontrol altına alındı.'},()=>E[me].gold>=50],
+    b:['Devam et',()=>{E[me].army*=0.8;return 'Ordunun %20\'si hastalandı.'}]}
+  ];
+  const e=ev[Math.floor(Math.random()*ev.length)];
+  $('dt').textContent=e.t;$('dp').textContent=e.d;
+  const y=$('dy'),n=$('dn');n.hidden=false;
+  y.textContent=e.a[0];y.disabled=e.a[2]?!e.a[2]():false;n.textContent=e.b[0];
+  const done=f=>{$('dlg').hidden=true;say(f());ui();saveGame()};
+  y.onclick=()=>done(e.a[1]);n.onclick=()=>done(e.b[1]);
+  $('dlg').hidden=false;
+}
+function askDlg(i,amt,kind='gold'){
+  const army=kind==='army',unit=army?'asker':'altın',have=Math.floor(E[me][kind]);
+  $('dt').textContent=T[i].name+(army?' askeri yardım istiyor':' yardım istiyor');
+  $('dp').textContent=amt+' '+unit+' talep ediyor. Şu an '+have+' '+(army?'askerin':'altının')+' var. Reddedersen ilişkiniz bozulur, bu da sana saldırmalarına yol açabilir.';
+  const y=$('dy'),n=$('dn');y.textContent='Ver ('+amt+')';y.disabled=have<amt;n.textContent='Vermiyorum';
+  const end=m=>{$('dlg').hidden=true;say(m);ui();saveGame()};
+  y.onclick=()=>{E[me][kind]-=amt;E[i][kind]+=amt;setR(me,i,R(me,i)+20);end(T[i].name+' teşekkür etti.')};
+  n.onclick=()=>{setR(me,i,R(me,i)-15);end(T[i].name+' reddedilmeye kızdı.')};
+  $('dlg').hidden=false;
+}
+$('bAsk').onclick=()=>{if(selC==null)return;const o=C[selC].owner,amt=50,r=R(me,o);
+  if(r>=10&&E[o].gold>=amt&&Math.random()<0.5+r/200){E[o].gold-=amt;E[me].gold+=amt;setR(me,o,r-10);say(T[o].name+' sana '+amt+' altın verdi.');SFX.coin()}
+  else{setR(me,o,r-5);say(T[o].name+' isteğini reddetti.')}ui()};
+$('bArmy').onclick=()=>{if(selC==null)return;const o=C[selC].owner,amt=40,r=R(me,o);
+  if(r>=10&&E[o].army>=amt*2&&Math.random()<0.4+r/200){E[o].army-=amt;E[me].army+=amt;setR(me,o,r-8);say(T[o].name+' sana '+amt+' asker gönderdi.')}
+  else{setR(me,o,r-5);say(T[o].name+' askeri yardım isteğini reddetti.')}ui()};
+$('bGift').onclick=()=>{if(selC==null)return;const o=C[selC].owner;E[me].gold-=50;E[o].gold+=50;setR(me,o,R(me,o)+15);say(T[o].name+' hediyeni kabul etti.');ui()};
+$('bAtk').onclick=()=>{if(selC==null)return;const c=C[selC],o=c.owner;
+  if(ally[rk(me,o)]){say('Müttefikine saldıramazsın. Önce ittifakı boz.');return}
+  if(!war[rk(me,o)]){declareWar(me,o);say(T[o].name+' ülkesine savaş ilan ettin!');SFX.war();ui();return}
+  const r=attackCity(me,selC);
+  SFX[r==='cap'?'capital':r?'win':'fail']();
+  if(r==='cap')say(c.name+' başkenti ele geçirildi! Ganimet: +60 altın.');else if(r)say(c.name+' şehri ele geçirildi.');else say('Saldırı püskürtüldü.');
+  if(owned(me).length===C.length){over=true;say('Dünya senin! Tebrikler.');SFX.winGame()}ui();draw()};
+$('bAlly').onclick=()=>{if(selC==null)return;const o=C[selC].owner,k=rk(me,o),r=R(me,o);
+  if(ally[k]){delete ally[k];setR(me,o,r-15);say('İttifak bozuldu.')}
+  else if(war[k])say('Savaştayken ittifak kurulmaz.');
+  else if(r>=25&&Math.random()<0.5+r/200){ally[k]=1;setR(me,o,r+10);say(T[o].name+' ittifak teklifini kabul etti.');SFX.peace()}
+  else{setR(me,o,r-3);say(T[o].name+' ittifak teklifini reddetti.')}ui()};
+$('bPeace').onclick=()=>{if(selC==null)return;const o=C[selC].owner,k=rk(me,o);if(!war[k])return;
+  if(E[o].army<E[me].army*1.3||Math.random()<0.3){delete war[k];setR(me,o,R(me,o)+10);say('Barış yapıldı.');SFX.peace()}
+  else say(T[o].name+' barışı reddetti.');ui()};
+$('bCity').onclick=()=>{if(sel==null)return;const cs=T[sel].cities;selC=cs[(cs.indexOf(selC)+1)%cs.length];ui();draw()};
+$('bRec').onclick=()=>{E[me].gold-=50;E[me].army+=40;SFX.coin();ui()};
+$('bEnd').onclick=endTurn;
+
+// camera
+let s=3,ox=0,oy=0;
+function resize(){const r=devicePixelRatio||1;cv.width=innerWidth*r;cv.height=innerHeight*r;draw()}
+function fit(){s=minS()*1.8;ox=innerWidth/2-20*s;oy=(46+innerHeight-150)/2+35*s;clamp()}
+function minS(){return Math.max(innerWidth/360,(innerHeight-196)/143)}
+function clamp(){s=Math.min(Math.max(s,minS()),40);
+  ox=Math.max(Math.min(ox,180*s),innerWidth-180*s);
+  oy=Math.max(Math.min(oy,46+85*s),innerHeight-150-58*s)}
+function draw(){
+  if(!E.length)return;const r=devicePixelRatio||1;
+  ctx.setTransform(r,0,0,r,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);
+  const dark=matchMedia('(prefers-color-scheme:dark)').matches&&document.documentElement.dataset.theme!=='light'||document.documentElement.dataset.theme==='dark';
+  const L=dark?34:62;
+  const path=p=>{ctx.beginPath();p.forEach((v,k)=>{const x=ox+v[0]*s,y=oy-v[1]*s;k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath()};
+  const vis=c=>!(ox+c.bb[2]*s<0||ox+c.bb[0]*s>innerWidth||oy-c.bb[1]*s<0||oy-c.bb[3]*s>innerHeight);
+  for(const t of TD)for(const id of t.cities){const c=C[id];if(!vis(c))continue;path(c.p);ctx.fillStyle=col(c.owner,L);ctx.fill();ctx.lineWidth=.6;ctx.strokeStyle=dark?'#0006':'#fff8';ctx.stroke()}
+  for(const t of TD){path(t.p);ctx.lineWidth=1.3;ctx.strokeStyle=dark?'#000c':'#000a';ctx.stroke()}
+  if(selC!=null){path(C[selC].p);ctx.lineWidth=3;ctx.strokeStyle='#e8b400';ctx.stroke()}
+  for(const c of C){if(!(s>9||c.id===selC))continue;const x=ox+c.x*s,y=oy-c.y*s;if(x<-40||y<-20||x>innerWidth+40||y>innerHeight+20)continue;
+    ctx.fillStyle=dark?'#fff':'#111';ctx.textAlign='center';ctx.font=(c.cap?'bold ':'')+'11px Georgia';ctx.fillText(c.name,x,y+4)}
+  ctx.fillStyle=dark?'#fff':'#111';ctx.textAlign='center';ctx.font='12px Georgia';
+  for(const t of T){const px=ox+t.cx*s,py=oy-t.cy*s;
+    if(s>10||t.pow>=4||s>5.5&&t.pow>=2){ctx.fillText(t.name,px,py+4)}}
+}
+function hit(px,py){const lon=(px-ox)/s,lat=(oy-py)/s;
+  for(let k=TD.length-1;k>=0;k--){const t=TD[k];if(lon<t.bb[0]||lon>t.bb[2]||lat<t.bb[1]||lat>t.bb[3])continue;
+    for(const id of t.cities)if(inside(C[id].p,lon,lat))return id}
+  let best=null,bd=14;
+  for(const c of C)for(const v of c.p){const d=Math.hypot(ox+v[0]*s-px,oy-v[1]*s-py);if(d<bd){bd=d;best=c.id}}
+  return best}
+const ptr=new Map();let moved=0,lastD=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);moved=0;lastD=0});
+cv.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);
+  const n=[e.clientX,e.clientY];
+  if(ptr.size===1){ox+=n[0]-o[0];oy+=n[1]-o[1];moved+=Math.abs(n[0]-o[0])+Math.abs(n[1]-o[1])}
+  else if(ptr.size===2){ptr.set(e.pointerId,n);const [a,b]=[...ptr.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+    if(lastD){zoomAt((a[0]+b[0])/2,(a[1]+b[1])/2,d/lastD)}lastD=d;moved+=20;draw();return}
+  ptr.set(e.pointerId,n);clamp();draw()});
+const up=e=>{if(ptr.size===1&&moved<10&&E.length){const cid=hit(e.clientX,e.clientY);if(cid==null){sel=null;selC=null}else{selC=cid;sel=C[cid].t}
+    ui();draw();SFX.tap()}
+  ptr.delete(e.pointerId);lastD=0};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptr.delete(e.pointerId);lastD=0});
+function zoomAt(x,y,f){const ns=Math.min(Math.max(s*f,minS()),40);f=ns/s;ox=x-(x-ox)*f;oy=y-(y-oy)*f;s=ns;clamp()}
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY<0?1.15:0.87);draw()},{passive:false});
+$('zi').onclick=()=>{zoomAt(innerWidth/2,innerHeight/2,1.4);draw()};
+$('zo').onclick=()=>{zoomAt(innerWidth/2,innerHeight/2,0.7);draw()};
+addEventListener('resize',()=>{clamp();resize()});
+function buildList(){
+  $('pick').hidden=false;$('list').hidden=false;$('pick').textContent=scn.name+' · ülkeni seç';$('list').innerHTML='';
+  const str=i=>T.filter(x=>x.owner===i).reduce((s,x)=>s+x.pow,0);
+  T.filter(t=>t.owner===t.id).sort((a,b)=>str(b.id)-str(a.id)).slice(0,24).forEach(t=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<span>${t.name}</span><span style="width:14px;height:14px;background:${col(t.id,55)};border:1px solid var(--line)"></span>`;
+    b.onclick=()=>startGame(t.id);$('list').appendChild(b)});
+}
+SCN.forEach(s=>{const b=document.createElement('button');b.innerHTML=`<b>${s.name}</b><small>${s.sub}</small>`;
+  b.onclick=()=>{applyScn(s);[...$('eras').children].forEach(x=>x.classList.remove('on'));b.classList.add('on');buildList()};$('eras').appendChild(b)});
+const KEY='dunya-fatihi-kayitlar',OLD='dunya-fatihi-kayit';
+let gid=null;
+function validSave(d){return d&&d.id&&d.own&&d.own.length===T.length&&d.E&&d.E.length===T.length&&SCN.some(x=>x.id===d.scn)}
+function readSaves(){try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(a)?a.filter(validSave):[]}catch(e){return []}}
+function writeSaves(a){try{localStorage.setItem(KEY,JSON.stringify(a));return true}catch(e){return false}}
+function saveGame(msg,asNew){if(!E.length)return;
+  if(asNew||!gid)gid='g'+Date.now()+Math.floor(Math.random()*1000);
+  const d={id:gid,scn:scn.id,me,year,over,moves,own:T.map(t=>t.owner),cown:C.map(c=>c.owner),E,rel,war,ally,ts:Date.now()};
+  const a=readSaves(),i=a.findIndex(x=>x.id===gid);
+  if(i>=0)a[i]=d;else{a.push(d);if(a.length>12)a.shift()}
+  const ok=writeSaves(a);
+  if(msg)say(ok?(asNew?'Yeni kayıt oluşturuldu.':'Oyun kaydedildi.'):'Kaydedilemedi: tarayıcı kayda izin vermiyor.')}
+function loadGame(id){const d=readSaves().find(x=>x.id===id);if(!d)return;
+  applyScn(SCN.find(x=>x.id===d.scn));
+  T.forEach((t,i)=>{t.owner=d.own[i]});C.forEach(c=>c.owner=T[c.t].owner);
+  if(d.cown&&d.cown.length===C.length)C.forEach((c,i)=>{c.owner=d.cown[i]});
+  E=d.E;me=d.me;year=d.year;over=d.over;moves=d.moves==null?5:d.moves;rel=d.rel;war=d.war;ally=d.ally;gid=d.id;sel=null;selC=null;
+  $('dlg').hidden=true;$('menu').hidden=true;fit();say('Kayıt yüklendi.');ui();draw()}
+function refreshSaves(){const box=$('saves');box.innerHTML='';
+  const a=readSaves().sort((x,y)=>y.ts-x.ts);
+  a.forEach(d=>{const row=document.createElement('div');row.className='srow';
+    const c=document.createElement('button');c.className='main';const dt=new Date(d.ts);
+    c.textContent=T[d.me].name+' · '+SCN.find(x=>x.id===d.scn).name+' · Yıl '+d.year+' · '+dt.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    c.onclick=()=>loadGame(d.id);
+    const x=document.createElement('button');x.textContent='Sil';let arm=0;
+    x.onclick=()=>{if(!arm){arm=1;x.textContent='Emin misin?';setTimeout(()=>{arm=0;x.textContent='Sil'},4000);return}
+      writeSaves(readSaves().filter(s=>s.id!==d.id));refreshSaves()};
+    row.append(c,x);box.appendChild(row)});
+  $('savesT').hidden=!a.length}
+$('bSave').onclick=()=>saveGame(true);
+$('bSaveAs').onclick=()=>saveGame(true,true);
+$('bMenu').onclick=()=>{saveGame();$('menu').hidden=false;refreshSaves()};
+try{const o=JSON.parse(localStorage.getItem(OLD)||'null');
+  if(o&&o.own){o.id='eski'+Date.now();o.ts=Date.now();const a=readSaves();a.push(o);if(writeSaves(a))localStorage.removeItem(OLD)}}catch(e){}
+refreshSaves();
+// ses düğmesi ve genel dinleyiciler
+new MutationObserver(()=>{if(!$('dlg').hidden)(($('dt').textContent.includes('Toprağımız'))?SFX.lost:SFX.dialog)()}).observe($('dlg'),{attributes:true,attributeFilter:['hidden']});
+document.addEventListener('pointerdown',()=>{if(soundOn){ac();startMusic()}});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&b.id!=='bSnd'&&b.id!=='bAtk'&&b.id!=='bRec')SFX.tap()});
+document.addEventListener('visibilitychange',()=>{if(AC&&document.hidden&&AC.state==='running')AC.suspend().catch(()=>{});else if(AC&&!document.hidden&&soundOn)AC.resume().catch(()=>{})});
+$('bSnd').onclick=()=>{soundOn=!soundOn;try{localStorage.setItem('dunya-fatihi-ses',soundOn?'1':'0')}catch(e){}
+  sndLabel();if(soundOn){ac();startMusic();SFX.tap()}};
+sndLabel();
+resize();
+</script>
+
+</html>
