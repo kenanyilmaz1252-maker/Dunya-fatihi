@@ -1,0 +1,6 @@
+1) Bu klasorun icindeki her seyi GitHub deponuza yukleyin (Add file > Upload files).
+2) ".github" klasoru gizli oldugu icin tablette gorunmeyebilir. Yuklenmezse:
+   GitHub'da Add file > Create new file deyin, dosya adina su yolu yazin:
+   .github/workflows/build.yml
+   ve BUNU-YAPISTIR-build.yml.txt dosyasinin icindekini oraya yapistirip Commit edin.
+3) Ustteki Actions sekmesinden derlemeyi izleyin. Bitince "dunya-fatihi-apk" paketini indirin.
